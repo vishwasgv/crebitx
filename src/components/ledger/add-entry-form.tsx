@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Send, Lock, FileText, CheckCircle } from "lucide-react"
+import { Send, Plus, Minus, RotateCcw, PenTool } from "lucide-react"
 
 const entrySchema = z.object({
   amount: z.coerce.number().min(1, "Amount is required"),
@@ -56,55 +56,70 @@ export function AddEntryForm({ customerId }: { customerId: string }) {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-lg border-t z-50">
-      <div className="max-w-xl mx-auto space-y-3">
+    <div className="fixed bottom-0 left-0 right-0 p-6 bg-[#fef8f3]/95 backdrop-blur-xl border-t border-[rgba(190,200,202,0.3)] z-50 shadow-[0_-12px_40px_rgba(35,33,30,0.08)] rounded-t-[2.5rem]">
+      <div className="max-w-2xl mx-auto space-y-4">
+        
+        {/* Animated Tabs */}
         <Tabs defaultValue="SALE" onValueChange={(v) => setTag(v as any)} className="w-full">
-          <TabsList className="grid grid-cols-4 h-12 p-1 bg-stone-100/50 rounded-xl">
-            <TabsTrigger value="SALE" className="rounded-lg font-bold text-[10px] uppercase tracking-widest data-[state=active]:bg-crebitx-teal data-[state=active]:text-white">
-              Sale
+          <TabsList className="grid grid-cols-4 h-12 p-1.5 bg-[#f3ede8] rounded-2xl gap-1">
+            <TabsTrigger value="SALE" className="rounded-xl font-bold text-[10px] uppercase tracking-widest data-[state=active]:bg-[#005259] data-[state=active]:text-white transition-all flex items-center gap-2">
+              <Plus size={12} /> Sale
             </TabsTrigger>
-            <TabsTrigger value="PAYMENT" className="rounded-lg font-bold text-[10px] uppercase tracking-widest data-[state=active]:bg-crebitx-green data-[state=active]:text-white">
-              Payment
+            <TabsTrigger value="PAYMENT" className="rounded-xl font-bold text-[10px] uppercase tracking-widest data-[state=active]:bg-[#4CAF50] data-[state=active]:text-white transition-all flex items-center gap-2">
+              <Minus size={12} /> Pay
             </TabsTrigger>
-            <TabsTrigger value="RETURN" className="rounded-lg font-bold text-[10px] uppercase tracking-widest data-[state=active]:bg-red-500 data-[state=active]:text-white">
-              Return
+            <TabsTrigger value="RETURN" className="rounded-xl font-bold text-[10px] uppercase tracking-widest data-[state=active]:bg-[#ba1a1a] data-[state=active]:text-white transition-all flex items-center gap-2">
+              <RotateCcw size={12} /> Ret
             </TabsTrigger>
-            <TabsTrigger value="ADJUSTMENT" className="rounded-lg font-bold text-[10px] uppercase tracking-widest data-[state=active]:bg-stone-500 data-[state=active]:text-white">
-              Adj.
+            <TabsTrigger value="ADJUSTMENT" className="rounded-xl font-bold text-[10px] uppercase tracking-widest data-[state=active]:bg-[#703d15] data-[state=active]:text-white transition-all flex items-center gap-2">
+              <PenTool size={12} /> Adj
             </TabsTrigger>
           </TabsList>
         </Tabs>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex items-center gap-2">
+        {/* Form Fields */}
+        <form onSubmit={handleSubmit(onSubmit)} className="flex items-center gap-4">
           <input type="hidden" value={tag} {...register("tag")} />
-          <div className="flex-1 flex items-center bg-stone-100 rounded-full px-4 py-2 border border-stone-200 focus-within:ring-2 focus-within:ring-crebitx-teal/20 transition-all">
-            <span className="text-stone-400 font-bold mr-2">₹</span>
+          
+          <div className="flex-1 flex items-center bg-white rounded-2xl px-5 h-14 border border-[rgba(190,200,202,0.2)] shadow-ambient-card focus-within:ring-2 focus-within:ring-[#005259]/10 transition-all">
+            <span className="text-[#005259] font-black text-lg mr-3">₹</span>
             <Input 
               type="number" 
               {...register("amount")} 
               placeholder="0.00" 
-              className="border-none shadow-none focus-visible:ring-0 bg-transparent h-8 p-0 text-lg font-bold"
+              className="border-none shadow-none focus-visible:ring-0 bg-transparent h-full p-0 text-2xl font-black text-[#1d1b18] placeholder:text-[#bec8ca] w-32"
             />
-            <div className="w-px h-6 bg-stone-300 mx-2" />
+            <div className="w-px h-8 bg-[#f3ede8] mx-4" />
             <Input 
               {...register("note")} 
-              placeholder="Add note..." 
-              className="border-none shadow-none focus-visible:ring-0 bg-transparent h-8 p-0 text-xs font-medium"
+              placeholder="Add internal note..." 
+              className="border-none shadow-none focus-visible:ring-0 bg-transparent h-full p-0 text-sm font-semibold text-[#3f494a] placeholder:text-[#bec8ca]"
             />
           </div>
-          <Button 
+
+          <button 
             type="submit" 
             disabled={loading}
-            className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all active:scale-95 ${
-              tag === "PAYMENT" ? "bg-crebitx-green hover:bg-crebitx-green/90" : 
-              tag === "SALE" ? "bg-crebitx-teal hover:bg-crebitx-teal/90" :
-              tag === "RETURN" ? "bg-red-500 hover:bg-red-600" :
-              "bg-stone-700 hover:bg-stone-800"
+            className={`w-14 h-14 rounded-2xl shadow-ambient-lg flex items-center justify-center transition-all active:scale-90 hover:scale-105 disabled:opacity-50 ${
+              tag === "PAYMENT" ? "bg-[#4CAF50]" : 
+              tag === "SALE" ? "bg-[#005259]" :
+              tag === "RETURN" ? "bg-[#ba1a1a]" :
+              "bg-[#703d15]"
             }`}
           >
-            <Send size={20} className="text-white ml-0.5" />
-          </Button>
+            {loading ? (
+              <RefreshCw size={22} className="text-white animate-spin" />
+            ) : (
+              <Send size={24} className="text-white ml-0.5" />
+            )}
+          </button>
         </form>
+
+        <div className="flex justify-center">
+          <p className="text-[10px] font-black text-[#6f797a] uppercase tracking-widest opacity-40">
+            Secure Ledger Synchronization
+          </p>
+        </div>
       </div>
     </div>
   )

@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
+import { DEFAULT_SETTINGS } from "@/lib/settings-defaults"
 import { z } from "zod"
 
 const settingsSchema = z.object({
@@ -10,6 +11,8 @@ const settingsSchema = z.object({
   defaultGrace: z.number().min(0),
   reminderTone: z.enum(["FRIENDLY", "BALANCED", "STRICT"]),
   autoApproveLimit: z.number().min(0),
+  riskWeightDelay: z.number().min(0).max(1),
+  riskWeightLimit: z.number().min(0).max(1),
 })
 
 export async function getSettings() {
@@ -17,24 +20,27 @@ export async function getSettings() {
   if (!session) return null
 
   const tenantId = session.user.tenantId
+  if (!tenantId) return DEFAULT_SETTINGS
 
-  let config = await prisma.businessConfig.findUnique({
-    where: { tenantId },
-  })
-
-  if (!config) {
-    config = await prisma.businessConfig.create({
-      data: {
-        tenantId,
-        defaultCycle: 30,
-        defaultGrace: 7,
-        reminderTone: "FRIENDLY",
-        autoApproveLimit: 0,
-      },
+  try {
+    let config = await prisma.businessConfig.findUnique({
+      where: { tenantId },
     })
-  }
 
-  return config
+    if (!config) {
+      config = await prisma.businessConfig.create({
+        data: {
+          tenantId,
+          ...DEFAULT_SETTINGS,
+        },
+      })
+    }
+
+    return config
+  } catch (error) {
+    console.error("Get settings error (using defaults):", error)
+    return DEFAULT_SETTINGS
+  }
 }
 
 export async function updateSettings(data: z.infer<typeof settingsSchema>) {
@@ -42,6 +48,7 @@ export async function updateSettings(data: z.infer<typeof settingsSchema>) {
   if (!session) return { error: "Unauthorized" }
 
   const tenantId = session.user.tenantId
+  if (!tenantId) return { error: "No tenant found for this account" }
 
   try {
     await prisma.businessConfig.upsert({

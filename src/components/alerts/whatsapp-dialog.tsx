@@ -11,7 +11,7 @@ import {
   DialogTitle, 
   DialogTrigger 
 } from "@/components/ui/dialog"
-import { MessageSquare, Send } from "lucide-react"
+import { MessageSquare, Send, Sparkles } from "lucide-react"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -45,82 +45,80 @@ export function WhatsAppDialog({ customerName, amount, phone }: WhatsAppDialogPr
 
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="flex-1 sm:flex-none h-12 px-8 rounded-xl border-stone-200 font-bold">
-          <MessageSquare size={18} className="mr-2" /> WhatsApp
-        </Button>
+      <DialogTrigger className="flex-1 h-14 bg-white hover:bg-[#f9f3ed] text-[#3f494a] font-bold rounded-2xl flex items-center justify-center gap-2 border border-[rgba(190,200,202,0.3)] transition-all shadow-ambient-card active:scale-95">
+        <MessageSquare size={18} className="text-[#005259]" /> WhatsApp
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] rounded-[2rem] border-[rgba(190,200,202,0.2)] bg-[#fef8f3] p-8">
         <DialogHeader>
-          <DialogTitle>Send WhatsApp Alert</DialogTitle>
-          <DialogDescription>
-            Select a tone for your reminder to {customerName}.
-          </DialogDescription>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-[#cae8eb] flex items-center justify-center">
+              <Sparkles size={20} className="text-[#005259]" />
+            </div>
+            <div>
+              <DialogTitle className="text-xl font-extrabold text-[#1d1b18]">Smart Alert</DialogTitle>
+              <DialogDescription className="text-[#6f797a] font-medium text-xs">
+                AI-crafted reminder for {customerName}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="py-4 space-y-6">
-          <RadioGroup defaultValue="ease" onValueChange={setTone} className="grid grid-cols-3 gap-4">
-            <div>
-              <RadioGroupItem value="ease" id="ease" className="peer sr-only" />
-              <Label
-                htmlFor="ease"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-crebitx-teal [&:has([data-state=checked])]:border-crebitx-teal cursor-pointer"
-              >
-                <span className="text-sm font-bold">Ease</span>
-                <span className="text-[10px] text-stone-400 mt-1">Gentle</span>
-              </Label>
-            </div>
-            <div>
-              <RadioGroupItem value="medium" id="medium" className="peer sr-only" />
-              <Label
-                htmlFor="medium"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-crebitx-teal [&:has([data-state=checked])]:border-crebitx-teal cursor-pointer"
-              >
-                <span className="text-sm font-bold">Medium</span>
-                <span className="text-[10px] text-stone-400 mt-1">Firm</span>
-              </Label>
-            </div>
-            <div>
-              <RadioGroupItem value="warm" id="warm" className="peer sr-only" />
-              <Label
-                htmlFor="warm"
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-crebitx-teal [&:has([data-state=checked])]:border-crebitx-teal cursor-pointer"
-              >
-                <span className="text-sm font-bold">Warm</span>
-                <span className="text-[10px] text-stone-400 mt-1">Urgent</span>
-              </Label>
-            </div>
+        <div className="py-6 space-y-8">
+          <RadioGroup defaultValue="ease" onValueChange={setTone} className="grid grid-cols-3 gap-3">
+            {[
+              { id: "ease", label: "Gentle", icon: "🌱" },
+              { id: "medium", label: "Firm", icon: "⚖️" },
+              { id: "warm", label: "Urgent", icon: "🔥" }
+            ].map((t) => (
+              <div key={t.id}>
+                <RadioGroupItem value={t.id} id={t.id} className="peer sr-only" />
+                <Label
+                  htmlFor={t.id}
+                  className="flex flex-col items-center justify-center rounded-2xl border-2 border-transparent bg-white p-4 hover:bg-[#f9f3ed] peer-data-[state=checked]:border-[#005259] peer-data-[state=checked]:bg-[#cae8eb]/20 transition-all cursor-pointer shadow-ambient-card h-full"
+                >
+                  <span className="text-xl mb-1">{t.icon}</span>
+                  <span className="text-[11px] font-black uppercase tracking-widest text-[#1d1b18]">{t.label}</span>
+                </Label>
+              </div>
+            ))}
           </RadioGroup>
 
           <div className="space-y-3">
-            <Label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Message Preview</Label>
-            <div className="bg-stone-50 p-4 rounded-xl border italic text-sm text-stone-600 leading-relaxed">
+            <div className="flex justify-between items-center px-1">
+              <Label className="text-[10px] font-black text-[#6f797a] uppercase tracking-[0.2em]">Message Draft</Label>
+              {tone !== "custom" && (
+                <button 
+                  onClick={() => { setTone("custom"); setCustomMessage(templates[tone]) }}
+                  className="text-[10px] font-black text-[#005259] uppercase hover:underline"
+                >
+                  Edit manually
+                </button>
+              )}
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-[rgba(190,200,202,0.2)] shadow-inner">
               {tone === "custom" ? (
                 <Textarea 
                   placeholder="Type your custom message..." 
                   value={customMessage} 
                   onChange={(e) => setCustomMessage(e.target.value)}
-                  className="bg-white border-stone-200"
+                  className="bg-transparent border-none p-0 focus-visible:ring-0 text-sm font-medium text-[#3f494a] min-h-[80px]"
                 />
               ) : (
-                getMessage()
+                <p className="text-sm font-medium text-[#3f494a] leading-relaxed italic">
+                  &ldquo;{getMessage()}&rdquo;
+                </p>
               )}
             </div>
-            {tone !== "custom" && (
-              <button 
-                onClick={() => { setTone("custom"); setCustomMessage(templates[tone]) }}
-                className="text-[10px] font-bold text-crebitx-teal uppercase hover:underline"
-              >
-                Edit Message
-              </button>
-            )}
           </div>
         </div>
 
-        <DialogFooter>
-          <Button onClick={handleSend} className="w-full bg-crebitx-teal hover:bg-crebitx-teal/90 h-12 font-bold">
-            <Send size={18} className="mr-2" /> Send to WhatsApp
-          </Button>
+        <DialogFooter className="sm:justify-start">
+          <button 
+            onClick={handleSend} 
+            className="w-full h-14 bg-[#005259] hover:bg-[#0f6c74] text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-ambient active:scale-95"
+          >
+            <Send size={18} /> Dispatch WhatsApp
+          </button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

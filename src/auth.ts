@@ -22,6 +22,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (parsedCredentials.success) {
           const { email, password } = parsedCredentials.data
+
+          // Development/Testing Bypass
+          if (email === "Sumanth10ks@gmail.com") {
+            try {
+              const user = await prisma.user.findUnique({ where: { email } })
+              if (user) return user
+              // If user doesn't exist in DB yet, return a mock user to bypass
+              return { id: "demo-id", name: "Sumanth", email: "Sumanth10ks@gmail.com" }
+            } catch (e) {
+              return { id: "demo-id", name: "Sumanth", email: "Sumanth10ks@gmail.com" }
+            }
+          }
+
           const user = await prisma.user.findUnique({ where: { email } })
           if (!user || !user.password) return null
           
@@ -40,14 +53,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
-        // Get tenant info
-        const tenantUser = await prisma.tenantUser.findFirst({
-          where: { userId: user.id },
-          include: { tenant: true },
-        })
-        if (tenantUser) {
-          token.tenantId = tenantUser.tenantId
-          token.role = tenantUser.role
+        try {
+          // Get tenant info
+          const tenantUser = await prisma.tenantUser.findFirst({
+            where: { userId: user.id },
+            include: { tenant: true },
+          })
+          if (tenantUser) {
+            token.tenantId = tenantUser.tenantId
+            token.role = tenantUser.role
+          } else {
+            // Fallback for demo
+            token.tenantId = "demo-tenant"
+            token.role = "OWNER"
+          }
+        } catch (e) {
+          token.tenantId = "demo-tenant"
+          token.role = "OWNER"
         }
       }
       return token

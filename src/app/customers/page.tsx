@@ -1,171 +1,125 @@
+import { auth } from "@/auth"
+import { redirect } from "next/navigation"
 import { getCustomers } from "@/app/actions/customers"
-import { Button } from "@/components/ui/button"
 import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table"
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from "@/components/ui/dialog"
-import { Plus, Search, Phone, Mail, ArrowRight, Bell, User, Sparkles, PlusCircle } from "lucide-react"
+  Plus, 
+  Search, 
+  Filter, 
+  MoreVertical, 
+  ChevronRight, 
+  ShieldCheck, 
+  AlertTriangle,
+  Users
+} from "lucide-react"
 import Link from "next/link"
-import { AddCustomerForm } from "@/components/customers/add-customer-form"
-import { ImportCustomersDialog } from "@/components/customers/import-customers-dialog"
-import { Input } from "@/components/ui/input"
+import { Scroll3D } from "@/components/ui/scroll-3d"
+import { TopNav } from "@/components/navigation/top-nav"
 
 export default async function CustomersPage() {
+  const session = await auth()
+  if (!session) redirect("/login")
+  
   const customers = await getCustomers()
+  const user = session.user
 
   return (
-    <div className="min-h-screen bg-stone-50/50 pb-24 font-sans antialiased">
-      <header className="bg-white border-b sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard" className="text-crebitx-teal font-bold text-xl tracking-tight">CREBITX</Link>
-            <span className="text-stone-300">/</span>
-            <h1 className="font-bold text-lg text-stone-600">Customers</h1>
+    <div className="min-h-screen bg-[#fef8f3] text-[#1d1b18] font-sans antialiased pb-20">
+      <TopNav user={user} alertsCount={(customers || []).filter(c => c.riskSnapshots?.[0]?.level === "RED").length} />
+
+      <main className="px-6 py-8 max-w-7xl mx-auto space-y-12">
+        {/* Header Section */}
+        <Scroll3D>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#cae8eb] text-[#005259] text-[10px] font-black uppercase tracking-widest">
+                <Users size={12} /> Directory
+              </div>
+              <h2 className="text-4xl md:text-6xl font-extrabold text-[#1d1b18] tracking-tight leading-[1.05]">
+                Customer <br />Portfolio
+              </h2>
+            </div>
+            <div className="flex gap-3">
+              <button className="h-14 px-8 rounded-2xl bg-[#005259] text-white font-black text-sm flex items-center gap-2 hover:bg-[#0f6c74] transition-all shadow-ambient active:scale-95">
+                <Plus size={20} /> Add New Customer
+              </button>
+            </div>
           </div>
+        </Scroll3D>
 
-          <div className="flex items-center gap-2">
-            <ImportCustomersDialog />
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button className="bg-crebitx-teal hover:bg-crebitx-teal/90 font-bold">
-                  <Plus size={18} className="mr-2" /> Add Customer
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                  <DialogTitle>Add New Customer</DialogTitle>
-                  <DialogDescription>
-                    Enter the details of your new customer to start tracking their credit.
-                  </DialogDescription>
-                </DialogHeader>
-                <AddCustomerForm />
-              </DialogContent>
-            </Dialog>
+        {/* Search & Filter Bar */}
+        <Scroll3D delay={100}>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative group">
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[#bec8ca] group-focus-within:text-[#005259] transition-colors" size={20} />
+              <input 
+                type="text" 
+                placeholder="Search by business name, phone, or risk status..." 
+                className="w-full h-16 pl-14 pr-6 rounded-2xl bg-white border border-[rgba(190,200,202,0.2)] shadow-ambient-card focus:ring-2 focus:ring-[#005259]/10 focus:border-[#005259]/20 transition-all outline-none font-medium"
+              />
+            </div>
+            <button className="h-16 px-6 rounded-2xl bg-white border border-[rgba(190,200,202,0.2)] shadow-ambient-card font-bold text-sm flex items-center gap-2 hover:bg-[#f3ede8] transition-all whitespace-nowrap">
+              <Filter size={20} /> Advanced Filters
+            </button>
           </div>
-        </div>
-      </header>
+        </Scroll3D>
 
-      <main className="max-w-7xl mx-auto px-4 pt-8 space-y-6">
-        <div className="flex items-center gap-4 bg-white p-2 rounded-xl border shadow-sm">
-          <Search className="text-stone-400 ml-2" size={20} />
-          <Input 
-            placeholder="Search customers by name, phone or email..." 
-            className="border-none shadow-none focus-visible:ring-0" 
-          />
-        </div>
+        <div className="grid grid-cols-1 gap-4">
+          {(customers || []).map((customer, i) => {
+            const latestRisk = customer.riskSnapshots?.[0]
+            const isCritical = latestRisk?.level === "RED"
+            const outstanding = (customer.receivables || []).reduce((sum: number, r: any) => sum + (r.amount - r.paidAmount), 0)
 
-        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-stone-50 hover:bg-stone-50">
-                <TableHead className="w-[300px] text-[10px] font-bold uppercase tracking-widest text-stone-400">Customer</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-stone-400">Contact</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-stone-400">Risk Level</TableHead>
-                <TableHead className="text-right text-[10px] font-bold uppercase tracking-widest text-stone-400">Outstanding</TableHead>
-                <TableHead className="w-[100px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {customers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-32 text-center text-stone-500 font-medium italic">
-                    No customers found. Click "Add Customer" to get started.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                customers.map((customer) => {
-                  const totalOutstanding = customer.receivables.reduce((sum, r) => sum + (r.amount - r.paidAmount), 0)
-                  const risk = customer.riskSnapshots[0]
-                  const riskColor = risk?.level === "RED" ? "bg-red-500" : risk?.level === "YELLOW" ? "bg-crebitx-gold" : "bg-crebitx-green"
+            return (
+              <Scroll3D key={customer.id} delay={i * 80}>
+                <Link href={`/customers/${customer.id}`}>
+                  <div className="bg-white rounded-[2rem] p-6 md:p-8 shadow-ambient-card border border-[rgba(190,200,202,0.15)] hover:border-[#005259]/30 transition-all group relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-6">
+                      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center font-black text-xl shadow-inner ${
+                        isCritical ? "bg-[#ffdad6] text-[#ba1a1a]" : "bg-[#f3ede8] text-[#3f494a]"
+                      }`}>
+                        {customer.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xl font-extrabold text-[#1d1b18] group-hover:text-[#005259] transition-colors">
+                            {customer.name}
+                          </h3>
+                          {isCritical && <AlertTriangle size={16} className="text-[#ba1a1a]" />}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs font-bold text-[#6f797a] uppercase tracking-widest">
+                          <span>ID: {customer.id.slice(-6).toUpperCase()}</span>
+                          <span className="w-1 h-1 rounded-full bg-[#bec8ca]" />
+                          <span>{customer.phone || "No phone"}</span>
+                        </div>
+                      </div>
+                    </div>
 
-                  return (
-                    <TableRow key={customer.id} className="group hover:bg-stone-50/50 transition-colors cursor-pointer">
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-sm ${riskColor}`}>
-                            {customer.name[0]}
-                          </div>
-                          <div>
-                            <div className="font-bold text-stone-900">{customer.name}</div>
-                            <div className="text-[9px] font-bold text-stone-400 uppercase tracking-widest">
-                              Cycle: {customer.creditProfile?.paymentCycle} Days
-                            </div>
-                          </div>
+                    <div className="flex items-center gap-8 md:gap-16">
+                      <div className="text-right space-y-1">
+                        <p className="text-[10px] font-black text-[#6f797a] uppercase tracking-widest">Outstanding</p>
+                        <p className="text-xl font-black text-[#1d1b18]">₹{outstanding.toLocaleString()}</p>
+                      </div>
+                      <div className="text-right space-y-1">
+                        <p className="text-[10px] font-black text-[#6f797a] uppercase tracking-widest">Risk Level</p>
+                        <div className={`flex items-center gap-1.5 justify-end text-xs font-black uppercase ${
+                          latestRisk?.level === "RED" ? "text-[#ba1a1a]" : 
+                          latestRisk?.level === "YELLOW" ? "text-[#703d15]" : "text-[#005259]"
+                        }`}>
+                          {latestRisk?.level === "GREEN" && <ShieldCheck size={14} />}
+                          {latestRisk?.level || "N/A"}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          {customer.phone && (
-                            <div className="flex items-center gap-1.5 text-xs text-stone-500 font-medium">
-                              <Phone size={12} className="text-crebitx-teal opacity-50" /> {customer.phone}
-                            </div>
-                          )}
-                          {customer.email && (
-                            <div className="flex items-center gap-1.5 text-xs text-stone-500 font-medium">
-                              <Mail size={12} className="text-crebitx-teal opacity-50" /> {customer.email}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest text-white shadow-sm ${riskColor}`}>
-                          {risk?.level || "GREEN"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="font-bold text-crebitx-teal text-lg">₹{totalOutstanding.toLocaleString()}</div>
-                      </TableCell>
-                      <TableCell>
-                        <Link href={`/customers/${customer.id}`}>
-                          <Button variant="ghost" size="icon" className="group-hover:text-crebitx-teal group-hover:bg-crebitx-teal/5 rounded-full transition-all">
-                            <ArrowRight size={18} />
-                          </Button>
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              )}
-            </TableBody>
-          </Table>
+                      </div>
+                      <div className="hidden md:block">
+                        <ChevronRight size={24} className="text-[#bec8ca] group-hover:text-[#005259] group-hover:translate-x-1 transition-all" />
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </Scroll3D>
+            )
+          })}
         </div>
       </main>
-
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 w-full z-50 bg-white/90 backdrop-blur-lg border-t flex justify-around items-center px-4 py-3 rounded-t-3xl shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
-        <Link href="/dashboard" className="flex flex-col items-center gap-1 text-stone-400 hover:text-crebitx-teal">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-          <span className="text-[10px] font-bold uppercase tracking-tight">Dashboard</span>
-        </Link>
-        <Link href="/customers" className="flex flex-col items-center gap-1 text-crebitx-teal">
-          <User size={24} />
-          <span className="text-[10px] font-bold uppercase tracking-tight">Customers</span>
-        </Link>
-        <Link href="/customers" className="flex flex-col items-center gap-1 text-stone-400 hover:text-crebitx-teal">
-          <PlusCircle size={24} />
-          <span className="text-[10px] font-bold uppercase tracking-tight">Actions</span>
-        </Link>
-        <Link href="/alerts" className="flex flex-col items-center gap-1 text-stone-400 hover:text-crebitx-teal">
-          <Bell size={24} />
-          <span className="text-[10px] font-bold uppercase tracking-tight">Alerts</span>
-        </Link>
-        <Link href="/settings" className="flex flex-col items-center gap-1 text-stone-400 hover:text-crebitx-teal">
-          <Sparkles size={24} />
-          <span className="text-[10px] font-bold uppercase tracking-tight">Settings</span>
-        </Link>
-      </nav>
     </div>
   )
 }
