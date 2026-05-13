@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Direct Login Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #0052a3;
+        }
+        pre {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Direct Login Test (Plain HTML)</h1>
+        <p>This tests login using plain fetch API (no React, no Next.js)</p>
+        
+        <button onclick="testBackendHealth()">1. Test Backend Health</button>
+        <button onclick="testLogin()">2. Test Login</button>
+        <button onclick="checkLocalStorage()">3. Check LocalStorage</button>
+        <button onclick="testWithAxios()">4. Test with Axios</button>
+        
+        <h3>Console Output:</h3>
+        <div id="output"></div>
+    </div>
+
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+            output.appendChild(div);
+            console.log(message);
+        }
+
+        async function testBackendHealth() {
+            output.innerHTML = '';
+            log('Testing backend health...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:4000/api/v1/health');
+                const data = await response.json();
+                log('✅ Backend is UP!', 'success');
+                log('Response: ' + JSON.stringify(data, null, 2));
+            } catch (error) {
+                log('❌ Backend health check failed: ' + error.message, 'error');
+                log('Make sure backend is running on port 4000', 'error');
+            }
+        }
+
+        async function testLogin() {
+            output.innerHTML = '';
+            log('Testing login with fetch...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:4000/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'owner@democorp.com',
+                        password: 'Password123!'
+                    })
+                });
+                
+                log('Response status: ' + response.status, 'info');
+                
+                if (!response.ok) {
+                    throw new Error('HTTP error ' + response.status);
+                }
+                
+                const data = await response.json();
+                log('✅ Login successful!', 'success');
+                log('Response: ' + JSON.stringify(data, null, 2));
+                
+                if (data.data && data.data.accessToken) {
+                    localStorage.setItem('access_token', data.data.accessToken);
+                    localStorage.setItem('refresh_token', data.data.refreshToken);
+                    log('✅ Tokens saved to localStorage', 'success');
+                }
+            } catch (error) {
+                log('❌ Login failed: ' + error.message, 'error');
+                if (error.message.includes('CORS')) {
+                    log('This is a CORS error. Check backend CORS configuration.', 'error');
+                }
+            }
+        }
+
+        function checkLocalStorage() {
+            output.innerHTML = '';
+            log('Checking localStorage...', 'info');
+            
+            const accessToken = localStorage.getItem('access_token');
+            const refreshToken = localStorage.getItem('refresh_token');
+            const user = localStorage.getItem('user');
+            
+            if (accessToken) {
+                log('✅ Access token found: ' + accessToken.substring(0, 30) + '...', 'success');
+                
+                // Decode JWT
+                try {
+                    const payload = JSON.parse(atob(accessToken.split('.')[1]));
+                    log('Decoded token: ' + JSON.stringify(payload, null, 2), 'info');
+                } catch (e) {
+                    log('Could not decode token', 'error');
+                }
+            } else {
+                log('❌ No access token found', 'error');
+            }
+            
+            if (refreshToken) {
+                log('✅ Refresh token found', 'success');
+            } else {
+                log('❌ No refresh token found', 'error');
+            }
+            
+            if (user) {
+                log('✅ User data: ' + user, 'success');
+            } else {
+                log('❌ No user data found', 'error');
+            }
+        }
+
+        async function testWithAxios() {
+            output.innerHTML = '';
+            log('Trying to load axios...', 'info');
+            
+            // Try to load axios from CDN
+            if (typeof axios === 'undefined') {
+                log('Loading axios from CDN...', 'info');
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js';
+                script.onload = () => {
+                    log('Axios loaded! Running test...', 'success');
+                    testLoginWithAxios();
+                };
+                script.onerror = () => {
+                    log('Failed to load axios', 'error');
+                };
+                document.head.appendChild(script);
+            } else {
+                testLoginWithAxios();
+            }
+        }
+
+        async function testLoginWithAxios() {
+            try {
+                log('Testing login with axios...', 'info');
+                const response = await axios.post('http://localhost:4000/api/v1/auth/login', {
+                    email: 'owner@democorp.com',
+                    password: 'Password123!'
+                });
+                
+                log('✅ Axios login successful!', 'success');
+                log('Response: ' + JSON.stringify(response.data, null, 2));
+            } catch (error) {
+                log('❌ Axios login failed: ' + error.message, 'error');
+                if (error.response) {
+                    log('Response data: ' + JSON.stringify(error.response.data, null, 2), 'error');
+                }
+            }
+        }
+    </script>
+</body>
+</html>
