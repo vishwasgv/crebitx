@@ -60,11 +60,11 @@ export function ImportCustomersDialog() {
 
   return (
     <Dialog>
-      <DialogTrigger asChild>
+      <DialogTrigger render={
         <Button variant="outline" className="border-stone-200">
           <Upload size={18} className="mr-2" /> Bulk Import
         </Button>
-      </DialogTrigger>
+      } />
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Import Customers from CSV</DialogTitle>

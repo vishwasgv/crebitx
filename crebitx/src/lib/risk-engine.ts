@@ -23,7 +23,7 @@ export async function calculateRiskScore(customerId: string) {
   const profile = customer.creditProfile
 
   // 1. Overdue check
-  const oldestOverdue = receivables.find(r => r.dueDate < now)
+  const oldestOverdue = receivables.find((r: any) => r.dueDate < now)
   if (oldestOverdue) {
     const diffDays = Math.ceil((now.getTime() - oldestOverdue.dueDate.getTime()) / (1000 * 3600 * 24))
     
@@ -43,7 +43,7 @@ export async function calculateRiskScore(customerId: string) {
 
   // 2. Credit limit check
   if (profile && profile.creditLimit > 0) {
-    const totalOutstanding = receivables.reduce((sum, r) => sum + (r.amount - r.paidAmount), 0)
+    const totalOutstanding = receivables.reduce((sum: number, r: any) => sum + (r.amount - r.paidAmount), 0)
     if (totalOutstanding > profile.creditLimit) {
       score -= 20
       if (level !== "RED") level = "YELLOW"

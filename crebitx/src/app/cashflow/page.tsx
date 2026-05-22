@@ -110,7 +110,7 @@ export default async function CashflowPage() {
                 <div className="space-y-6 flex-grow">
                   <div className="space-y-3">
                     <span className="text-[10px] font-black text-[#005259] uppercase tracking-widest bg-[#cae8eb] px-2 py-0.5 rounded">High Confidence</span>
-                    {data.topCustomers.slice(0, 2).map((c, i) => (
+                    {data.topCustomers.slice(0, 2).map((c: any, i: number) => (
                       <div key={i} className="flex items-center justify-between p-4 bg-[#f9f3ed] rounded-[1.5rem] hover:scale-[1.02] transition-transform">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-xl bg-[#005259] flex items-center justify-center font-black text-white text-xs">{c.name.slice(0,2).toUpperCase()}</div>
@@ -123,7 +123,7 @@ export default async function CashflowPage() {
                   {data.alerts.length > 0 && (
                     <div className="space-y-3">
                       <span className="text-[10px] font-black text-[#ba1a1a] uppercase tracking-widest bg-[#ffdad6] px-2 py-0.5 rounded">Low Confidence</span>
-                      {data.alerts.slice(0, 2).map((a, i) => (
+                      {data.alerts.slice(0, 2).map((a: any, i: number) => (
                         <div key={i} className="flex items-center justify-between p-4 bg-[#ffdad6]/20 border border-[#ba1a1a]/10 rounded-[1.5rem] hover:scale-[1.02] transition-transform">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-xl bg-[#ba1a1a] flex items-center justify-center font-black text-white text-xs">{a.name.slice(0,2).toUpperCase()}</div>

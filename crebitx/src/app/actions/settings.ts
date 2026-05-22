@@ -1,10 +1,10 @@
 "use server"
 
-import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
 import { DEFAULT_SETTINGS } from "@/lib/settings-defaults"
 import { z } from "zod"
+import { api } from "@/lib/api"
 
 const settingsSchema = z.object({
   defaultCycle: z.number().min(1),
@@ -19,24 +19,13 @@ export async function getSettings() {
   const session = await auth()
   if (!session) return null
 
-  const tenantId = session.user.tenantId
-  if (!tenantId) return DEFAULT_SETTINGS
-
   try {
-    let config = await prisma.businessConfig.findUnique({
-      where: { tenantId },
+    const response = await api.get("/settings", {
+      headers: {
+        Authorization: `Bearer ${session.user.accessToken}`,
+      },
     })
-
-    if (!config) {
-      config = await prisma.businessConfig.create({
-        data: {
-          tenantId,
-          ...DEFAULT_SETTINGS,
-        },
-      })
-    }
-
-    return config
+    return response.data.data
   } catch (error) {
     console.error("Get settings error (using defaults):", error)
     return DEFAULT_SETTINGS
@@ -47,23 +36,18 @@ export async function updateSettings(data: z.infer<typeof settingsSchema>) {
   const session = await auth()
   if (!session) return { error: "Unauthorized" }
 
-  const tenantId = session.user.tenantId
-  if (!tenantId) return { error: "No tenant found for this account" }
-
   try {
-    await prisma.businessConfig.upsert({
-      where: { tenantId },
-      update: data,
-      create: {
-        tenantId,
-        ...data,
+    await api.patch("/settings", data, {
+      headers: {
+        Authorization: `Bearer ${session.user.accessToken}`,
       },
     })
 
     revalidatePath("/settings")
     return { success: true }
-  } catch (error) {
+  } catch (error: any) {
     console.error("Update settings error:", error)
-    return { error: "Failed to update settings" }
+    return { error: error.message || "Failed to update settings" }
   }
 }
+

@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Send, Plus, Minus, RotateCcw, PenTool } from "lucide-react"
+import { Send, Plus, Minus, RotateCcw, PenTool, RefreshCw } from "lucide-react"
 
 const entrySchema = z.object({
-  amount: z.coerce.number().min(1, "Amount is required"),
+  amount: z.number().min(1, "Amount is required"),
   tag: z.enum(["SALE", "PAYMENT", "RETURN", "ADJUSTMENT"]),
   note: z.string().optional(),
 })
@@ -85,7 +85,7 @@ export function AddEntryForm({ customerId }: { customerId: string }) {
             <span className="text-[#005259] font-black text-lg mr-3">₹</span>
             <Input 
               type="number" 
-              {...register("amount")} 
+              {...register("amount", { valueAsNumber: true })} 
               placeholder="0.00" 
               className="border-none shadow-none focus-visible:ring-0 bg-transparent h-full p-0 text-2xl font-black text-[#1d1b18] placeholder:text-[#bec8ca] w-32"
             />

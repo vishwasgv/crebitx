@@ -11,7 +11,7 @@ export async function importCustomers(customers: any[]) {
   const tenantId = session.user.tenantId
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       const createdCount = 0
       for (const row of customers) {
         if (!row.name) continue

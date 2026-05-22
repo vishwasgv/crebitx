@@ -2,7 +2,22 @@ import { getCustomerById } from "@/app/actions/customers"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Phone, CreditCard, Clock, MapPin, MoreVertical, MessageSquare, History, ShieldAlert } from "lucide-react"
+import { 
+  ArrowLeft, 
+  Phone, 
+  CreditCard, 
+  Clock, 
+  MapPin, 
+  MoreVertical, 
+  MessageSquare, 
+  History, 
+  ShieldAlert,
+  LayoutDashboard,
+  Users,
+  Sparkles,
+  Bell,
+  Settings
+} from "lucide-react"
 import { LedgerTimeline } from "@/components/ledger/ledger-timeline"
 import { AddEntryForm } from "@/components/ledger/add-entry-form"
 import { WhatsAppDialog } from "@/components/alerts/whatsapp-dialog"
@@ -13,15 +28,15 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
 
   if (!customer) notFound()
 
-  const totalOutstanding = customer.receivables.reduce((sum, r) => sum + (r.amount - r.paidAmount), 0)
-  const risk = customer.riskSnapshots[0]
+  const totalOutstanding = (customer.receivables || []).reduce((sum: number, r: any) => sum + (r.amount - r.paidAmount), 0)
+  const risk = customer.riskSnapshots?.[0]
   const riskLevel = risk?.level || "GREEN"
   
-  const riskConfig = {
+  const riskConfig = (({
     RED:    { text: "text-[#ba1a1a]", bg: "bg-[#ffdad6]/40", dot: "bg-[#ba1a1a]", label: "High Risk" },
     YELLOW: { text: "text-[#703d15]", bg: "bg-[#ffdcc6]/40", dot: "bg-[#F4C430]", label: "Medium Risk" },
     GREEN:  { text: "text-[#005259]", bg: "bg-[#cae8eb]/40", dot: "bg-[#4CAF50]", label: "Low Risk" },
-  }[riskLevel] ?? { text: "text-[#005259]", bg: "bg-[#cae8eb]/40", dot: "bg-[#4CAF50]", label: "Low Risk" }
+  } as Record<string, { text: string; bg: string; dot: string; label: string }>)[riskLevel]) ?? { text: "text-[#005259]", bg: "bg-[#cae8eb]/40", dot: "bg-[#4CAF50]", label: "Low Risk" }
 
   return (
     <div className="min-h-screen bg-[#fef8f3] text-[#1d1b18] font-sans antialiased pb-32">

@@ -14,6 +14,15 @@ import {
 import Link from "next/link"
 import { Scroll3D } from "@/components/ui/scroll-3d"
 import { TopNav } from "@/components/navigation/top-nav"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { AddCustomerForm } from "@/components/customers/add-customer-form"
+import { ImportCustomersDialog } from "@/components/customers/import-customers-dialog"
 
 export default async function CustomersPage() {
   const session = await auth()
@@ -24,7 +33,7 @@ export default async function CustomersPage() {
 
   return (
     <div className="min-h-screen bg-[#fef8f3] text-[#1d1b18] font-sans antialiased pb-20">
-      <TopNav user={user} alertsCount={(customers || []).filter(c => c.riskSnapshots?.[0]?.level === "RED").length} />
+      <TopNav user={user} alertsCount={(customers || []).filter((c: any) => c.riskSnapshots?.[0]?.level === "RED").length} />
 
       <main className="px-6 py-8 max-w-7xl mx-auto space-y-12">
         {/* Header Section */}
@@ -39,9 +48,20 @@ export default async function CustomersPage() {
               </h2>
             </div>
             <div className="flex gap-3">
-              <button className="h-14 px-8 rounded-2xl bg-[#005259] text-white font-black text-sm flex items-center gap-2 hover:bg-[#0f6c74] transition-all shadow-ambient active:scale-95">
-                <Plus size={20} /> Add New Customer
-              </button>
+              <ImportCustomersDialog />
+              <Dialog>
+                <DialogTrigger render={
+                  <button className="h-14 px-8 rounded-2xl bg-[#005259] text-white font-black text-sm flex items-center gap-2 hover:bg-[#0f6c74] transition-all shadow-ambient active:scale-95">
+                    <Plus size={20} /> Add New Customer
+                  </button>
+                } />
+                <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader>
+                    <DialogTitle>Add New Customer</DialogTitle>
+                  </DialogHeader>
+                  <AddCustomerForm />
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         </Scroll3D>
@@ -64,7 +84,7 @@ export default async function CustomersPage() {
         </Scroll3D>
 
         <div className="grid grid-cols-1 gap-4">
-          {(customers || []).map((customer, i) => {
+          {(customers || []).map((customer: any, i: number) => {
             const latestRisk = customer.riskSnapshots?.[0]
             const isCritical = latestRisk?.level === "RED"
             const outstanding = (customer.receivables || []).reduce((sum: number, r: any) => sum + (r.amount - r.paidAmount), 0)

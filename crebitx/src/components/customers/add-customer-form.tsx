@@ -17,9 +17,9 @@ const customerSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal("")),
   address: z.string().optional(),
-  creditLimit: z.coerce.number().default(0),
-  paymentCycle: z.coerce.number().default(30),
-  gracePeriod: z.coerce.number().default(0),
+  creditLimit: z.number().default(0),
+  paymentCycle: z.number().default(30),
+  gracePeriod: z.number().default(0),
 })
 
 export function AddCustomerForm() {
@@ -31,8 +31,8 @@ export function AddCustomerForm() {
     handleSubmit,
     setValue,
     formState: { errors },
-  } = useForm<z.infer<typeof customerSchema>>({
-    resolver: zodResolver(customerSchema),
+  } = useForm<any>({
+    resolver: zodResolver(customerSchema) as any,
     defaultValues: {
       paymentCycle: 30,
       creditLimit: 0,
@@ -60,7 +60,7 @@ export function AddCustomerForm() {
         <div className="space-y-2 col-span-2">
           <Label htmlFor="name">Customer Name *</Label>
           <Input id="name" {...register("name")} placeholder="Full Name" />
-          {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+          {errors.name?.message && <p className="text-sm text-red-500">{String(errors.name.message)}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="phone">Phone Number</Label>
@@ -69,7 +69,7 @@ export function AddCustomerForm() {
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input id="email" type="email" {...register("email")} placeholder="customer@example.com" />
-          {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+          {errors.email?.message && <p className="text-sm text-red-500">{String(errors.email.message)}</p>}
         </div>
         <div className="space-y-2 col-span-2">
           <Label htmlFor="address">Address</Label>
@@ -77,11 +77,11 @@ export function AddCustomerForm() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="creditLimit">Credit Limit (₹)</Label>
-          <Input id="creditLimit" type="number" {...register("creditLimit")} placeholder="0 for unlimited" />
+          <Input id="creditLimit" type="number" {...register("creditLimit", { valueAsNumber: true })} placeholder="0 for unlimited" />
         </div>
         <div className="space-y-2">
           <Label htmlFor="paymentCycle">Payment Cycle (Days)</Label>
-          <Select onValueChange={(v) => setValue("paymentCycle", parseInt(v))} defaultValue="30">
+          <Select onValueChange={(v) => setValue("paymentCycle", parseInt(v || "30"))} defaultValue="30">
             <SelectTrigger>
               <SelectValue placeholder="Select cycle" />
             </SelectTrigger>
@@ -96,7 +96,7 @@ export function AddCustomerForm() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="gracePeriod">Grace Period (Days)</Label>
-          <Input id="gracePeriod" type="number" {...register("gracePeriod")} placeholder="0" />
+          <Input id="gracePeriod" type="number" {...register("gracePeriod", { valueAsNumber: true })} placeholder="0" />
         </div>
       </div>
       <Button type="submit" className="w-full bg-crebitx-teal hover:bg-crebitx-teal/90" disabled={loading}>

@@ -63,7 +63,7 @@ export default async function ActionsPage() {
             </Scroll3D>
 
             <div className="space-y-4">
-              {data.alerts.map((alert, i) => (
+              {data.alerts.map((alert: any, i: number) => (
                 <Scroll3D key={i} delay={i * 100}>
                   <div className="bg-white rounded-[2.5rem] p-8 shadow-ambient-card border border-[rgba(190,200,202,0.15)] flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-[#005259]/30 transition-all group">
                     <div className="flex items-center gap-6">

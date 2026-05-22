@@ -160,7 +160,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
             <div className="space-y-4">
               <Label className="text-base font-bold text-[#1d1b18]">Default Payment Cycle</Label>
               <Select 
-                onValueChange={(v) => setValue("defaultCycle", parseInt(v))}
+                onValueChange={(v) => setValue("defaultCycle", parseInt(v || "30"))}
                 defaultValue={watch("defaultCycle").toString()}
               >
                 <SelectTrigger className="w-full bg-white rounded-xl border-[rgba(190,200,202,0.3)] font-medium">

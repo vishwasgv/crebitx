@@ -56,7 +56,7 @@ export default async function AlertsPage() {
               <p className="text-[#6f797a] mt-2 font-medium">No urgent payment risks detected currently.</p>
             </div>
           ) : (
-            data.alerts.map((alert, i) => (
+            data.alerts.map((alert: any, i: number) => (
               <Scroll3D key={i} delay={i * 100}>
                 <div className="bg-white rounded-[2.5rem] p-8 shadow-ambient-card border border-[rgba(190,200,202,0.15)] hover:border-[#005259]/20 transition-all group overflow-hidden relative">
                   {/* Accent Line */}

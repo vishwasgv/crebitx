@@ -24,7 +24,7 @@ export function CollectionChart() {
           <Tooltip 
             cursor={{ fill: "rgba(0,82,89,0.05)" }}
             contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 40px -10px rgba(0,82,89,0.15)", fontWeight: "bold", color: "#1d1b18" }}
-            formatter={(value: number) => [`₹${value.toLocaleString()}`, "Collected"]}
+            formatter={(value: any) => [`₹${Number(value).toLocaleString()}`, "Collected"]}
           />
           <Bar dataKey="amount" fill="#005259" radius={[8, 8, 8, 8]} barSize={40} />
         </BarChart>

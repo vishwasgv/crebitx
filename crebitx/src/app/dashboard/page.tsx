@@ -131,7 +131,7 @@ export default async function DashboardPage() {
                 {data.topCustomers.length === 0 ? (
                   <p className="text-sm text-[#6f797a] font-medium italic">No outstanding receivables.</p>
                 ) : (
-                  data.topCustomers.slice(0, 5).map((item, idx) => {
+                  data.topCustomers.slice(0, 5).map((item: any, idx: number) => {
                     const pct = Math.min(100, (item.amount / (data.outstandingAmount || 1)) * 100)
                     return (
                       <div key={idx} className="space-y-2 group">

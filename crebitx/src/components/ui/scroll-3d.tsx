@@ -1,13 +1,13 @@
 "use client"
 
-import { useEffect, useRef, type ReactNode } from "react"
+import { useEffect, useRef, type ReactNode, type ElementType } from "react"
 
 interface Scroll3DProps {
   children: ReactNode
   className?: string
   direction?: "up" | "left" | "right"
   delay?: number  // ms
-  as?: keyof JSX.IntrinsicElements
+  as?: ElementType
 }
 
 /**
@@ -59,7 +59,6 @@ export function Scroll3D({
   }, [delay])
 
   return (
-    // @ts-expect-error — dynamic tag
     <Tag ref={ref} className={`${dirClass} ${className}`}>
       {children}
     </Tag>
