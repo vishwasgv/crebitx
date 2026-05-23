@@ -23,8 +23,9 @@ import { AddEntryForm } from "@/components/ledger/add-entry-form"
 import { WhatsAppDialog } from "@/components/alerts/whatsapp-dialog"
 import { Scroll3D } from "@/components/ui/scroll-3d"
 
-export default async function CustomerDetailPage({ params }: { params: { id: string } }) {
-  const customer = await getCustomerById(params.id)
+export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  const customer = await getCustomerById(resolvedParams.id)
 
   if (!customer) notFound()
 
