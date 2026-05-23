@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { ArrowRight, User, Mail, Phone, Briefcase, Lock } from "lucide-react"
+import { signIn } from "next-auth/react"
 
 const registerSchema = z.object({
   name: z.string().min(2, "Name is too short"),
@@ -53,6 +54,14 @@ export default function RegisterPage() {
       localStorage.setItem('user', JSON.stringify(user))
       
       toast.success("Account created! Let's get started.")
+
+      // Establish NextAuth session cookie so Server Actions work
+      await signIn("credentials", {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      });
+
       router.push("/dashboard")
     } else {
       toast.error("Registration succeeded but no tokens received")

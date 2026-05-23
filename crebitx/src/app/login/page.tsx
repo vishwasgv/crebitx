@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { ArrowRight, Eye, EyeOff } from "lucide-react"
 import authService from "@/lib/auth-service"
+import { signIn } from "next-auth/react"
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -44,9 +45,16 @@ export default function LoginPage() {
       console.log('✅ Login successful:', result);
       
       if (result.tokens.accessToken) {
-        console.log('🎉 Access token received, redirecting to dashboard...');
+        console.log('🎉 Access token received, establishing NextAuth session...');
         toast.success(`Welcome back, ${result.user.firstName || result.user.email}!`)
         
+        // Establish NextAuth session cookie so Server Actions work
+        await signIn("credentials", {
+          email: data.email,
+          password: data.password,
+          redirect: false,
+        });
+
         // Use setTimeout to ensure toast shows before redirect
         setTimeout(() => {
           window.location.href = "/dashboard";
