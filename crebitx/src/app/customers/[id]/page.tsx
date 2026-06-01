@@ -21,6 +21,7 @@ import {
 import { LedgerTimeline } from "@/components/ledger/ledger-timeline"
 import { AddEntryForm } from "@/components/ledger/add-entry-form"
 import { WhatsAppDialog } from "@/components/alerts/whatsapp-dialog"
+import { ActivityDialog } from "@/components/customers/activity-form"
 import { Scroll3D } from "@/components/ui/scroll-3d"
 
 export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -118,7 +119,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
         {/* Quick Follow-up Actions */}
         <Scroll3D>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <a href={`tel:${customer.phone}`}>
               <button className="w-full h-14 bg-[#1d1b18] hover:bg-[#32302d] text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-ambient active:scale-95">
                 <Phone size={18} /> Call Partner
@@ -129,6 +130,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               amount={`₹${totalOutstanding.toLocaleString()}`} 
               phone={customer.phone || ""} 
             />
+            <ActivityDialog customerId={customer.id} />
           </div>
         </Scroll3D>
 

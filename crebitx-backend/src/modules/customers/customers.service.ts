@@ -223,6 +223,15 @@ export class CustomersService {
 
     const ledgerResult = await this.db.query(ledgerQuery, [customerId]);
 
+    // Get activities
+    const activitiesQuery = `
+      SELECT id, type, description, promise_date, promise_amount, created_at
+      FROM customer_activities
+      WHERE customer_id = $1
+      ORDER BY created_at DESC
+    `;
+    const activitiesResult = await this.db.query(activitiesQuery, [customerId]);
+
     return {
       id: customer.id,
       tenantId: customer.tenant_id,
@@ -261,6 +270,14 @@ export class CustomersService {
         note: l.note,
         eventDate: l.event_date,
         createdAt: l.created_at,
+      })),
+      activities: activitiesResult.rows.map((a) => ({
+        id: a.id,
+        type: a.type,
+        description: a.description,
+        promiseDate: a.promise_date,
+        promiseAmount: a.promise_amount ? parseFloat(a.promise_amount) : null,
+        createdAt: a.created_at,
       })),
     };
   }
@@ -540,5 +557,18 @@ export class CustomersService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  /**
+   * Add activity or promise to pay
+   */
+  async addActivity(tenantId: string, customerId: string, dto: any) {
+    const result = await this.db.query(
+      `INSERT INTO customer_activities (tenant_id, customer_id, type, description, promise_date, promise_amount)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, type, description, promise_date as "promiseDate", promise_amount as "promiseAmount", created_at as "createdAt"`,
+      [tenantId, customerId, dto.type, dto.description, dto.promiseDate || null, dto.promiseAmount || null]
+    );
+    return { success: true, data: result.rows[0] };
   }
 }

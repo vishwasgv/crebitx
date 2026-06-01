@@ -132,6 +132,14 @@ export async function getCustomerById(id: string) {
         note: l.note,
         eventDate: l.eventDate,
       })),
+      activities: (c.activities || []).map((a: any) => ({
+        id: a.id,
+        type: a.type,
+        description: a.description,
+        promiseDate: a.promiseDate,
+        promiseAmount: a.promiseAmount,
+        createdAt: a.createdAt,
+      })),
       riskSnapshots: c.riskSnapshot
         ? [
             {
@@ -169,6 +177,31 @@ export async function addLedgerEntry(data: {
   } catch (error: any) {
     console.error("Ledger entry error:", error)
     return { error: error.message || "Failed to add ledger entry" }
+  }
+}
+
+export async function addActivity(data: {
+  customerId: string
+  type: string
+  description: string
+  promiseDate?: string
+  promiseAmount?: number
+}) {
+  const session = await auth()
+  if (!session) return { error: "Unauthorized" }
+
+  try {
+    const response = await api.post(`/customers/${data.customerId}/activities`, data, {
+      headers: {
+        Authorization: `Bearer ${session.user.accessToken}`,
+      },
+    })
+
+    revalidatePath(`/customers/${data.customerId}`)
+    return { success: true, activity: response.data.data }
+  } catch (error: any) {
+    console.error("Activity entry error:", error)
+    return { error: error.message || "Failed to add activity" }
   }
 }
 

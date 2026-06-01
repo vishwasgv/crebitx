@@ -85,4 +85,15 @@ export class CustomersController {
   async getLedgerHistory(@CurrentTenant() tenantId: string, @Query() query: LedgerQueryDto) {
     return await this.customersService.getLedgerHistory(tenantId, query);
   }
+
+  @Post(':id/activities')
+  @ApiOperation({ summary: 'Add a customer activity/note/promise to pay' })
+  @ApiResponse({ status: 201, description: 'Activity added successfully' })
+  async addActivity(
+    @CurrentTenant() tenantId: string,
+    @Param('id') customerId: string,
+    @Body() dto: any,
+  ) {
+    return await this.customersService.addActivity(tenantId, customerId, dto);
+  }
 }
