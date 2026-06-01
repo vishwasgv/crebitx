@@ -1,9 +1,10 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { getDashboardKPIs } from "@/app/actions/dashboard"
-import { TrendingUp, Award, BarChart3, PieChart, Users, Calendar, ArrowUpRight, Zap, Target, History } from "lucide-react"
+import { TrendingUp, Award, BarChart3, Users, ArrowUpRight, Zap, Target, History, Calendar, PieChart } from "lucide-react"
 import { Scroll3D } from "@/components/ui/scroll-3d"
 import { TopNav } from "@/components/navigation/top-nav"
+import { CollectionsHeader, ReviewRulesButton } from "@/components/collections/collections-header"
 
 export default async function CollectionsPage() {
   const session = await auth()
@@ -20,23 +21,7 @@ export default async function CollectionsPage() {
       <main className="px-6 py-8 max-w-7xl mx-auto space-y-12">
         {/* Performance Scoreboard */}
         <Scroll3D>
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-            <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#cae8eb] text-[#005259] text-[10px] font-black uppercase tracking-widest">
-                <BarChart3 size={12} /> Performance Metrics
-              </div>
-              <h2 className="text-4xl md:text-6xl font-extrabold text-[#1d1b18] tracking-tight leading-[1.05]">
-                Recovery <br />Efficiency
-              </h2>
-            </div>
-            <div className="flex bg-white rounded-2xl p-2 shadow-ambient-card border border-[rgba(190,200,202,0.15)]">
-              {['7D', '30D', '90D', 'ALL'].map((period) => (
-                <button key={period} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${period === '30D' ? 'bg-[#005259] text-white shadow-ambient' : 'text-[#6f797a] hover:bg-[#f3ede8]'}`}>
-                  {period}
-                </button>
-              ))}
-            </div>
-          </div>
+          <CollectionsHeader />
         </Scroll3D>
 
         {/* High-Level Stats */}
@@ -153,9 +138,7 @@ export default async function CollectionsPage() {
                     <p className="text-sm font-medium text-white/70 mt-3 leading-relaxed">
                       Your current grace period rules are capturing <span className="text-white font-bold">₹4.2L</span> more than last month.
                     </p>
-                    <button className="mt-8 px-6 py-3 bg-white text-[#005259] rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#f9f3ed] transition-all">
-                      Review Rules
-                    </button>
+                    <ReviewRulesButton />
                  </div>
                  <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/5 rounded-full blur-2xl" />
                </div>

@@ -160,8 +160,8 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
             <div className="space-y-4">
               <Label className="text-base font-bold text-[#1d1b18]">Default Payment Cycle</Label>
               <Select 
-                onValueChange={(v) => setValue("defaultCycle", parseInt(v || "30"))}
-                defaultValue={watch("defaultCycle").toString()}
+                value={watch("defaultCycle").toString()}
+                onValueChange={(v) => setValue("defaultCycle", parseInt(v || "30"), { shouldDirty: true })}
               >
                 <SelectTrigger className="w-full bg-white rounded-xl border-[rgba(190,200,202,0.3)] font-medium">
                   <SelectValue placeholder="Select cycle" />
@@ -170,7 +170,8 @@ export function SettingsForm({ initialSettings }: { initialSettings: any }) {
                   <SelectItem value="7">7 Days</SelectItem>
                   <SelectItem value="15">15 Days</SelectItem>
                   <SelectItem value="30">30 Days</SelectItem>
-                  <SelectItem value="45">45 Days</SelectItem>
+                  <SelectItem value="60">60 Days</SelectItem>
+                  <SelectItem value="90">90 Days</SelectItem>
                 </SelectContent>
               </Select>
             </div>

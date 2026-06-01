@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { getSettings } from "@/app/actions/settings"
 import { DEFAULT_SETTINGS } from "@/lib/settings-defaults"
 import { SettingsForm } from "@/components/settings/settings-form"
-import { Shield, BellRing, BrainCircuit, Sparkles } from "lucide-react"
+import { Shield, BellRing, Sparkles } from "lucide-react"
 import { Scroll3D } from "@/components/ui/scroll-3d"
 import { TopNav } from "@/components/navigation/top-nav"
 
@@ -22,9 +22,6 @@ export default async function SettingsPage() {
       <main className="max-w-4xl mx-auto px-6 py-12 space-y-12">
         <Scroll3D>
           <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#005259]/8 border border-[#005259]/15 text-[#005259] text-xs font-bold uppercase tracking-widest">
-              <BrainCircuit size={14} /> Intelligence Core
-            </div>
             <h2 className="text-4xl md:text-6xl font-extrabold text-[#1d1b18] tracking-tight leading-[1.05]">Business <br />Logic</h2>
             <p className="text-[#3f494a] font-medium max-w-xl text-lg leading-relaxed mt-4">
               Configure your credit policies, reminder tones, and automated rules with precision.

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { SessionProvider } from "@/components/providers/session-provider";
 import { Toaster } from "@/components/ui/sonner";
 
 const manrope = Manrope({
@@ -22,10 +23,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="light">
       <body className={`${manrope.variable} font-sans antialiased`}>
-        <AuthProvider>
-          {children}
-          <Toaster position="top-center" />
-        </AuthProvider>
+        <SessionProvider>
+          <AuthProvider>
+            {children}
+            <Toaster position="top-center" />
+          </AuthProvider>
+        </SessionProvider>
       </body>
     </html>
   );

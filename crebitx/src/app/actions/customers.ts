@@ -3,7 +3,7 @@
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { api } from "@/lib/api"
+import { serverApi } from "@/lib/server-api"
 
 const customerSchema = z.object({
   name: z.string().min(2),
@@ -25,28 +25,19 @@ export async function createCustomer(formData: z.infer<typeof customerSchema>) {
   const { name, phone, email, address, creditLimit, paymentCycle, gracePeriod } = parsed.data
 
   try {
-    const response = await api.post(
-      "/customers",
-      {
-        name,
-        phone: phone || undefined,
-        email: email || undefined,
-        address: address || undefined,
-        creditLimit,
-        paymentCycle,
-        gracePeriod,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${session.user.accessToken}`,
-        },
-      }
-    )
+    const customer = await serverApi.post("/customers", session.user.accessToken!, {
+      name,
+      phone: phone || undefined,
+      email: email || undefined,
+      address: address || undefined,
+      creditLimit,
+      paymentCycle,
+      gracePeriod,
+    })
 
     revalidatePath("/customers")
-    return { success: true, customer: response.data.data }
+    return { success: true, customer }
   } catch (error: any) {
-    console.error("Create customer error:", error)
     return { error: error.message || "Failed to create customer" }
   }
 }
@@ -56,14 +47,8 @@ export async function getCustomers() {
   if (!session) return []
 
   try {
-    const response = await api.get("/customers", {
-      headers: {
-        Authorization: `Bearer ${session.user.accessToken}`,
-      },
-    })
-
-    const payload = response.data.data
-    const customersList = payload?.data || payload || []
+    const payload: any = await serverApi.get("/customers", session.user.accessToken!)
+    const customersList: any[] = payload?.data || payload || []
 
     return customersList.map((c: any) => ({
       id: c.id,
@@ -89,8 +74,7 @@ export async function getCustomers() {
         },
       ],
     }))
-  } catch (error) {
-    console.error("Get customers error:", error)
+  } catch {
     return []
   }
 }
@@ -100,13 +84,7 @@ export async function getCustomerById(id: string) {
   if (!session) return null
 
   try {
-    const response = await api.get(`/customers/${id}`, {
-      headers: {
-        Authorization: `Bearer ${session.user.accessToken}`,
-      },
-    })
-
-    const c = response.data.data
+    const c: any = await serverApi.get(`/customers/${id}`, session.user.accessToken!)
     if (!c) return null
 
     return {
@@ -149,8 +127,7 @@ export async function getCustomerById(id: string) {
           ]
         : [],
     }
-  } catch (error) {
-    console.error("Get customer by id error:", error)
+  } catch {
     return null
   }
 }
@@ -165,17 +142,11 @@ export async function addLedgerEntry(data: {
   if (!session) return { error: "Unauthorized" }
 
   try {
-    const response = await api.post("/customers/ledger", data, {
-      headers: {
-        Authorization: `Bearer ${session.user.accessToken}`,
-      },
-    })
-
+    const ledgerEntry = await serverApi.post("/customers/ledger", session.user.accessToken!, data)
     revalidatePath(`/customers/${data.customerId}`)
     revalidatePath("/dashboard")
-    return { success: true, ledgerEntry: response.data.data }
+    return { success: true, ledgerEntry }
   } catch (error: any) {
-    console.error("Ledger entry error:", error)
     return { error: error.message || "Failed to add ledger entry" }
   }
 }
@@ -191,17 +162,14 @@ export async function addActivity(data: {
   if (!session) return { error: "Unauthorized" }
 
   try {
-    const response = await api.post(`/customers/${data.customerId}/activities`, data, {
-      headers: {
-        Authorization: `Bearer ${session.user.accessToken}`,
-      },
-    })
-
+    const activity = await serverApi.post(
+      `/customers/${data.customerId}/activities`,
+      session.user.accessToken!,
+      data
+    )
     revalidatePath(`/customers/${data.customerId}`)
-    return { success: true, activity: response.data.data }
+    return { success: true, activity }
   } catch (error: any) {
-    console.error("Activity entry error:", error)
     return { error: error.message || "Failed to add activity" }
   }
 }
-

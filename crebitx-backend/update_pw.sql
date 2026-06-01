@@ -1,0 +1,1 @@
+UPDATE users SET password_hash = '$2b$10$Zq/Zeesx/1XQsVdHb2007uRdNq8pjAlMTPgH/I84RMtD.//6U/tDa' WHERE email IN ('owner@democorp.com','admin@democorp.com','staff@democorp.com');

@@ -15,13 +15,13 @@ import {
 } from "lucide-react"
 import { Scroll3D, TiltCard } from "@/components/ui/scroll-3d"
 import { AnimatedCounter } from "@/components/ui/animated-counter"
-import { CREBITX_LOGO_WORDMARK } from "@/lib/brand"
+import { CrebitXLogo } from "@/components/brand/crebitx-logo"
 import { pricingPlans } from "@/lib/pricing"
 
 const stats = [
-  { endValue: 2.4, decimals: 1, prefix: "₹", suffix: "Cr", label: "Recovered by SMBs" },
-  { endValue: 3200, decimals: 0, prefix: "", suffix: "+", label: "Active Businesses" },
-  { endValue: 18, decimals: 0, prefix: "", suffix: " days", label: "Avg. Collection Faster" },
+  { endValue: 14, decimals: 0, prefix: "", suffix: "-day", label: "Free trial with full access" },
+  { endValue: 5, decimals: 0, prefix: "", suffix: " min", label: "Typical setup from CSV import" },
+  { endValue: 100, decimals: 0, prefix: "", suffix: "%", label: "Visibility on open receivables" },
 ]
 
 const features = [
@@ -51,7 +51,7 @@ const features = [
     desc: "Onboard fast with CSV or Excel. CREBITX maps customers and receivables so you are not retyping ledgers.",
     icon: Upload,
     color: "bg-[#0f6c74]",
-    tag: "Module 11",
+    tag: "Fast setup",
   },
   {
     title: "Cashflow & Runway",
@@ -71,21 +71,21 @@ const features = [
 
 const testimonials = [
   {
-    name: "Rajan Mehta",
-    role: "Textile Trader, Surat",
-    quote: "I recovered ₹8L in 3 weeks that was stuck for months. CREBITX told me exactly who to call.",
+    name: "Rajan M.",
+    role: "Textile trader, Gujarat",
+    quote: "I open CrebitX every morning and know exactly which customers need a call — no more digging through registers.",
     rating: 5,
   },
   {
-    name: "Sunita Agarwal",
-    role: "Pharma Distributor, Jaipur",
-    quote: "The daily brief is like having a collections manager. My overdue dropped 60% in 2 months.",
+    name: "Sunita A.",
+    role: "Pharma distributor, Rajasthan",
+    quote: "The risk labels and daily brief feel built for how we actually run credit, not for accountants.",
     rating: 5,
   },
   {
-    name: "Deepak Nair",
-    role: "Hardware Supplier, Coimbatore",
-    quote: "Finally a tool that talks business-owner language. No accounting jargon, just clear actions.",
+    name: "Deepak N.",
+    role: "Hardware supplier, Tamil Nadu",
+    quote: "Clear actions, WhatsApp reminders, and one ledger — our team finally works from the same picture.",
     rating: 5,
   },
 ]
@@ -97,17 +97,7 @@ export default function HomePage() {
       {/* ── Floating Navbar ── */}
       <header className="fixed top-0 z-50 w-full border-b border-[rgba(190,200,202,0.3)] bg-[#fef8f3]/96 backdrop-blur-sm">
         <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between px-5 sm:px-7 lg:px-10">
-          <Link
-            href="/"
-            className="group flex shrink-0 items-center rounded-lg px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-[#005259]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fef8f3]"
-          >
-            <img
-              src={CREBITX_LOGO_WORDMARK}
-              alt="CrebitX"
-              className="h-9 w-auto object-contain sm:h-10"
-              style={{ mixBlendMode: 'multiply' }}
-            />
-          </Link>
+          <CrebitXLogo variant="wordmark" href="/" priority />
 
           <nav aria-label="Page sections" className="hidden items-center gap-9 md:flex">
             <a href="#features" className="text-[14px] font-medium text-[#4d5658] transition-colors hover:text-[#005259]">
@@ -128,6 +118,18 @@ export default function HomePage() {
           </nav>
 
           <div className="flex shrink-0 items-center gap-2 md:hidden">
+            <Link
+              href="/login"
+              className="text-[13px] font-semibold text-[#4d5658] hover:text-[#005259] px-2"
+            >
+              Login
+            </Link>
+            <Link
+              href="/register"
+              className="text-[13px] font-bold text-white bg-[#005259] hover:bg-[#0f6c74] px-4 py-2 rounded-full transition-colors"
+            >
+              Sign up
+            </Link>
             <details className="relative md:hidden">
               <summary className="list-none cursor-pointer flex h-9 w-9 items-center justify-center rounded-md text-[#3f494a] hover:bg-[#f3ede8] [&::-webkit-details-marker]:hidden">
                 <Menu size={18} strokeWidth={2} aria-hidden />
@@ -171,7 +173,7 @@ export default function HomePage() {
       </header>
 
       {/* ── Hero Section ── */}
-      <section className="scene-3d pt-32 pb-24 px-6 gradient-hero min-h-screen flex items-center relative overflow-hidden">
+      <section className="scene-3d pt-28 sm:pt-32 pb-20 sm:pb-24 px-5 sm:px-6 gradient-hero min-h-[90vh] sm:min-h-screen flex items-center relative overflow-hidden">
         {/* Background depth layers */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-20 right-10 w-96 h-96 rounded-full bg-[#cae8eb]/20 blur-3xl animate-hero-float" />
@@ -183,7 +185,7 @@ export default function HomePage() {
           <div className="max-w-3xl animate-fade-up-3d">
 
             {/* Headline */}
-            <h1 className="text-6xl md:text-8xl font-black text-[#1d1b18] tracking-tight leading-[1.05] mb-8">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-[#1d1b18] tracking-tight leading-[1.08] mb-6 sm:mb-8">
               Cashflow{" "}
               <span className="text-[#005259]">today.</span>
               <br />
@@ -191,9 +193,9 @@ export default function HomePage() {
               <span style={{ color: "#703d15" }}>tomorrow.</span>
             </h1>
 
-            <p className="text-xl text-[#3f494a] font-medium leading-relaxed mb-10 max-w-xl">
-              Stop chasing payments manually. CREBITX tells you where your money is stuck,
-              who is risky, and exactly what to do next — every single morning.
+            <p className="text-lg sm:text-xl text-[#3f494a] font-medium leading-relaxed mb-8 sm:mb-10 max-w-xl">
+              CrebitX turns your receivables into a daily action plan — who owes you, who is at risk,
+              and the next step to recover cash without spreadsheets or guesswork.
             </p>
 
             <div className="flex flex-col sm:flex-row items-start gap-4">
@@ -219,75 +221,6 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* ── Dashboard Preview Card (3D tilt) ── */}
-          <div className="mt-16 animate-fade-in-3d delay-400">
-            <TiltCard
-              className="relative max-w-4xl rounded-3xl overflow-hidden shadow-ambient-lg border border-[rgba(190,200,202,0.3)] bg-white"
-              intensity={5}
-            >
-              {/* Mock dashboard preview */}
-              <div className="p-6 pointer-events-none">
-                {/* Mock Header */}
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-[#005259]" />
-                    <div>
-                      <div className="w-24 h-3 bg-[#1d1b18] rounded-full" />
-                      <div className="w-16 h-2 bg-[#bec8ca] rounded-full mt-1" />
-                    </div>
-                  </div>
-                  <div className="w-9 h-9 rounded-full bg-[#f3ede8]" />
-                </div>
-                {/* Mock KPI Grid */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="bg-white rounded-2xl p-5 shadow-ambient-card border border-[rgba(190,200,202,0.15)]">
-                    <div className="w-20 h-2 bg-[#bec8ca] rounded mb-3" />
-                    <div className="w-28 h-7 bg-[#005259] rounded-lg" />
-                    <div className="w-14 h-2 bg-[#cae8eb] rounded mt-2" />
-                  </div>
-                  <div className="bg-[#ffdad6]/40 rounded-2xl p-5 border border-[#ba1a1a]/5">
-                    <div className="w-20 h-2 bg-[#ba1a1a]/30 rounded mb-3" />
-                    <div className="w-24 h-7 bg-[#ba1a1a]/70 rounded-lg" />
-                    <div className="w-28 h-2 bg-[#ba1a1a]/20 rounded mt-2" />
-                  </div>
-                  <div className="bg-[#005259] rounded-2xl p-5">
-                    <div className="w-20 h-2 bg-white/30 rounded mb-3" />
-                    <div className="w-28 h-7 bg-[#a2eff8] rounded-lg" />
-                    <div className="w-16 h-2 bg-white/20 rounded mt-2" />
-                  </div>
-                </div>
-                {/* Mock AI Insight */}
-                <div className="bg-[#cae8eb]/40 rounded-2xl p-4 flex items-center gap-4 mb-6 border border-[#cae8eb]/20">
-                  <div className="w-12 h-12 rounded-full bg-[#0f6c74] flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="w-3/4 h-3 bg-[#4e696c] rounded mb-2" />
-                    <div className="w-1/2 h-2 bg-[#4e696c]/50 rounded" />
-                  </div>
-                  <div className="w-24 h-9 bg-[#005259] rounded-full" />
-                </div>
-                {/* Mock Customer Cards */}
-                <div className="grid grid-cols-2 gap-4">
-                  {[0.9, 0.7].map((op, i) => (
-                    <div key={i} className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-ambient-card border border-[rgba(190,200,202,0.15)]">
-                      <div className="w-11 h-11 rounded-full bg-[#f3ede8]" />
-                      <div className="flex-1">
-                        <div className="w-16 h-2.5 bg-[#1d1b18] rounded mb-1.5" style={{ opacity: op }} />
-                        <div className="w-24 h-2 bg-[#bec8ca] rounded" style={{ opacity: op }} />
-                      </div>
-                      <div className="w-10 h-10 rounded-full bg-[#f3ede8]" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {/* Live indicator */}
-              <div className="absolute bottom-0 inset-x-0 h-32 bg-gradient-to-t from-white to-transparent flex items-end justify-center pb-5">
-                <div className="bg-white/95 backdrop-blur-md px-5 py-2.5 rounded-full border border-[rgba(190,200,202,0.3)] shadow-ambient-lg flex items-center gap-2.5">
-                  <span className="w-2 h-2 rounded-full bg-[#4CAF50] pulse-dot" />
-                  <span className="text-xs font-bold text-[#1d1b18] uppercase tracking-widest">Live Multi-Tenant Intelligence</span>
-                </div>
-              </div>
-            </TiltCard>
-          </div>
         </div>
       </section>
 
@@ -319,11 +252,12 @@ export default function HomePage() {
                 Built for the chaos of SMB finance
               </span>
               <h2 className="text-4xl md:text-5xl font-black text-[#1d1b18] tracking-tight leading-tight">
-                Everything in the product — on the page.
+                One platform for collections, risk, and cashflow.
               </h2>
               <p className="text-[#3f494a] font-medium leading-relaxed">
-                Hardware, ceramics, wholesale, and distribution teams use CREBITX to turn receivables into a daily
-                playbook: risk labels, alerts, imports, cashflow, collections, and owner rules in one place.
+                Hardware, ceramics, wholesale, and distribution businesses use CrebitX for risk labels,
+                daily alerts, bulk import, cashflow views, collections tracking, and owner rules — without
+                replacing your existing books.
               </p>
             </div>
           </Scroll3D>
@@ -457,8 +391,8 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <Scroll3D>
             <div className="mb-16 text-center">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#005259]">Real businesses. Real results.</span>
-              <h2 className="text-4xl font-black text-[#1d1b18] tracking-tight mt-3">What our users say</h2>
+              <span className="text-xs font-bold uppercase tracking-widest text-[#005259]">Built with SMB owners</span>
+              <h2 className="text-4xl font-black text-[#1d1b18] tracking-tight mt-3">Why teams switch to CrebitX</h2>
             </div>
           </Scroll3D>
 
@@ -497,7 +431,7 @@ export default function HomePage() {
                 <span className="text-[#a2eff8]">Go get it.</span>
               </h2>
               <p className="text-xl text-[#a2eff8]/80 font-medium">
-                Join 3,200+ businesses that have taken back control of their cashflow.
+                Start free today and give your team a clear collections rhythm — every morning.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link href="/register">
@@ -519,11 +453,7 @@ export default function HomePage() {
       <footer className="py-16 border-t border-[rgba(190,200,202,0.25)] bg-[#fef8f3] px-6">
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-start gap-12">
           <div className="space-y-4">
-            <img
-              src={CREBITX_LOGO_WORDMARK}
-              alt="CREBITX"
-              className="h-9 w-auto object-contain object-left sm:h-10 md:h-11 opacity-80 hover:opacity-100 transition-opacity"
-            />
+            <CrebitXLogo variant="wordmark" href="/" className="opacity-90 hover:opacity-100 transition-opacity" />
             <p className="text-[#6f797a] font-bold text-[10px] uppercase tracking-[0.2em] max-w-xs leading-relaxed">
               Cashflow today. Confidence tomorrow.
             </p>

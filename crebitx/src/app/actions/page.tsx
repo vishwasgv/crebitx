@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { getDashboardKPIs } from "@/app/actions/dashboard"
-import { Sparkles, Phone, MessageSquare, Clock, CheckCircle2, ArrowRight, Zap, Target, Star, Filter } from "lucide-react"
+import { Phone, MessageSquare, CheckCircle2, ArrowRight, Zap, Target, Star, Filter, Users } from "lucide-react"
 import Link from "next/link"
 import { Scroll3D } from "@/components/ui/scroll-3d"
 import { TopNav } from "@/components/navigation/top-nav"
@@ -19,18 +19,47 @@ export default async function ActionsPage() {
       <TopNav user={user} alertsCount={data.alerts.length} />
 
       <main className="px-6 py-8 max-w-7xl mx-auto space-y-12">
+        {/* Page header always visible */}
+        <Scroll3D>
+          <div className="space-y-2">
+            <h2 className="text-4xl md:text-5xl font-extrabold text-[#1d1b18] leading-[1.1] tracking-tight">
+              Action <br />Hub
+            </h2>
+            <p className="text-sm font-semibold text-[#6f797a]">Your daily priority call and follow-up list.</p>
+          </div>
+        </Scroll3D>
+
+        {data.alerts.length === 0 ? (
+          /* Empty state */
+          <Scroll3D>
+            <div className="flex flex-col items-center justify-center py-24 text-center space-y-6 bg-white rounded-[2.5rem] border border-[rgba(190,200,202,0.2)] shadow-ambient-card">
+              <div className="w-20 h-20 rounded-[1.5rem] bg-[#cae8eb]/50 flex items-center justify-center text-[#005259]">
+                <Target size={36} />
+              </div>
+              <div className="space-y-2 max-w-sm">
+                <h3 className="text-2xl font-extrabold text-[#1d1b18]">No actions needed today</h3>
+                <p className="text-sm font-medium text-[#6f797a] leading-relaxed">
+                  Once you add customers with outstanding receivables, your daily priority action list will appear here.
+                </p>
+              </div>
+              <Link href="/customers">
+                <button className="h-12 px-8 rounded-2xl bg-[#005259] text-white font-black text-sm flex items-center gap-2 hover:bg-[#0f6c74] transition-all shadow-ambient active:scale-95">
+                  <Users size={18} /> Go to Customers
+                </button>
+              </Link>
+            </div>
+          </Scroll3D>
+        ) : (
+          <>
         {/* Morning Brief Section */}
         <Scroll3D>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 bg-[#005259] rounded-[3rem] p-10 md:p-14 text-white shadow-ambient relative overflow-hidden">
             <div className="relative z-10 space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">
-                <Clock size={12} /> Morning Action Brief
-              </div>
               <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
-                Focus on these <br />3 Priority Wins.
+                Focus on these <br />{data.alerts.length} Priority {data.alerts.length === 1 ? "Win" : "Wins"}.
               </h2>
               <p className="text-white/70 font-medium text-lg max-w-md">
-                We've curated today's top actions that will recover ₹{(data.overdueAmount * 0.8).toLocaleString()} if completed by 5 PM.
+                Today&apos;s top actions can recover ₹{(data.overdueAmount * 0.8).toLocaleString()} if completed by 5 PM.
               </p>
             </div>
             <div className="relative z-10 flex flex-col gap-3">
@@ -39,12 +68,11 @@ export default async function ActionsPage() {
                   <Target size={24} />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-white/60 uppercase tracking-widest">Daily Target</p>
-                  <p className="text-xl font-black">₹3.5L Recovery</p>
+                  <p className="text-xs font-bold text-white/60 uppercase tracking-widest">Today&apos;s Potential</p>
+                  <p className="text-xl font-black">₹{(data.overdueAmount * 0.8).toLocaleString()}</p>
                 </div>
               </div>
             </div>
-            {/* Background Accent */}
             <Sparkles size={300} className="absolute -right-20 -bottom-20 text-white/5 rotate-12" />
           </div>
         </Scroll3D>
@@ -145,6 +173,8 @@ export default async function ActionsPage() {
             </Scroll3D>
           </div>
         </div>
+          </>
+        )}
       </main>
     </div>
   )

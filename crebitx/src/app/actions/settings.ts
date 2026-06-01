@@ -4,7 +4,7 @@ import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
 import { DEFAULT_SETTINGS } from "@/lib/settings-defaults"
 import { z } from "zod"
-import { api } from "@/lib/api"
+import { serverApi } from "@/lib/server-api"
 
 const settingsSchema = z.object({
   defaultCycle: z.number().min(1),
@@ -20,14 +20,9 @@ export async function getSettings() {
   if (!session) return null
 
   try {
-    const response = await api.get("/settings", {
-      headers: {
-        Authorization: `Bearer ${session.user.accessToken}`,
-      },
-    })
-    return response.data.data
-  } catch (error) {
-    console.error("Get settings error (using defaults):", error)
+    const data = await serverApi.get("/settings", session.user.accessToken!)
+    return data
+  } catch {
     return DEFAULT_SETTINGS
   }
 }
@@ -37,17 +32,10 @@ export async function updateSettings(data: z.infer<typeof settingsSchema>) {
   if (!session) return { error: "Unauthorized" }
 
   try {
-    await api.patch("/settings", data, {
-      headers: {
-        Authorization: `Bearer ${session.user.accessToken}`,
-      },
-    })
-
+    await serverApi.patch("/settings", session.user.accessToken!, data)
     revalidatePath("/settings")
     return { success: true }
   } catch (error: any) {
-    console.error("Update settings error:", error)
     return { error: error.message || "Failed to update settings" }
   }
 }
-

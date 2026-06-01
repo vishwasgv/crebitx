@@ -4,7 +4,8 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
 import { Bell, Settings, LayoutDashboard, Users, Sparkles, TrendingUp, Wallet, Calendar, LogOut } from "lucide-react"
-import { CREBITX_LOGO_MARK } from "@/lib/brand"
+import { CrebitXLogo } from "@/components/brand/crebitx-logo"
+import authService from "@/lib/auth-service"
 
 export function TopNav({ user, alertsCount = 0 }: { user: any, alertsCount?: number }) {
   const pathname = usePathname()
@@ -23,11 +24,7 @@ export function TopNav({ user, alertsCount = 0 }: { user: any, alertsCount?: num
     <header className="sticky top-0 z-50 glass-nav border-b border-[rgba(190,200,202,0.2)] shadow-ambient flex flex-col w-full bg-[#fef8f3]/80 backdrop-blur-md">
       <div className="flex justify-between items-center px-6 py-4">
         <Link href="/dashboard" className="group flex items-center gap-3 cursor-pointer">
-          <img
-            src={CREBITX_LOGO_MARK}
-            alt="CrebitX"
-            className="h-9 w-auto object-contain sm:h-10"
-          />
+          <CrebitXLogo variant="mark" />
           <div>
             <h1 className="font-extrabold text-[#1d1b18] text-xl leading-tight tracking-tight group-hover:text-[#005259] transition-colors">
               CrebitX
@@ -61,7 +58,10 @@ export function TopNav({ user, alertsCount = 0 }: { user: any, alertsCount?: num
             type="button"
             title="Logout"
             aria-label="Logout"
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => {
+              authService.logout()
+              signOut({ callbackUrl: "/login" })
+            }}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-[#ffdad6]/60"
           >
             <LogOut size={19} className="text-[#ba1a1a]" />

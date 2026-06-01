@@ -1,7 +1,7 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { getDashboardKPIs } from "@/app/actions/dashboard"
-import { Bell, LayoutDashboard, Users, Sparkles, Settings, Phone, MessageSquare, ShieldAlert, History, Filter } from "lucide-react"
+import { Bell, Phone, MessageSquare, ShieldAlert, History, Filter } from "lucide-react"
 import Link from "next/link"
 import { Scroll3D } from "@/components/ui/scroll-3d"
 import { TopNav } from "@/components/navigation/top-nav"
@@ -24,9 +24,6 @@ export default async function AlertsPage() {
         <Scroll3D>
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#ffdad6] text-[#ba1a1a] text-[10px] font-black uppercase tracking-widest">
-                <ShieldAlert size={12} /> Attention Required
-              </div>
               <h2 className="text-4xl md:text-6xl font-extrabold text-[#1d1b18] tracking-tight leading-[1.05]">
                 Critical <br />Liquidity Events
               </h2>

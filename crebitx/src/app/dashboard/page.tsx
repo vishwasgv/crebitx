@@ -3,14 +3,13 @@ import { redirect } from "next/navigation"
 import { getDashboardKPIs } from "@/app/actions/dashboard"
 import { TopNav } from "@/components/navigation/top-nav"
 import { Scroll3D, TiltCard } from "@/components/ui/scroll-3d"
-import { CollectionChart } from "@/components/dashboard/collection-chart"
 import { 
   PlusCircle, 
   ArrowRight, 
   TrendingUp, 
   AlertTriangle, 
-  Sparkles,
-  Zap
+  Zap,
+  Users
 } from "lucide-react"
 import Link from "next/link"
 
@@ -36,14 +35,9 @@ export default async function DashboardPage() {
             <h2 className="text-4xl md:text-5xl font-extrabold text-[#1d1b18] leading-[1.1] tracking-tight">
               Command <br />Dashboard
             </h2>
-            <div className="flex flex-wrap items-center gap-3 mt-6">
-              <div className="bg-[#cae8eb] text-[#005259] px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                <Sparkles size={14} /> AI Analysis Live
-              </div>
-              <p className="text-sm font-semibold text-[#6f797a]">
-                You have {data.alerts.length} urgent follow-ups today.
-              </p>
-            </div>
+            <p className="text-sm font-semibold text-[#6f797a] mt-4">
+              {data.alerts.length > 0 ? `${data.alerts.length} urgent follow-up${data.alerts.length !== 1 ? "s" : ""} today.` : "All caught up — no urgent follow-ups."}
+            </p>
           </div>
         </Scroll3D>
 
@@ -107,15 +101,50 @@ export default async function DashboardPage() {
 
         {/* Intelligence Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-          {/* Risk Heatmap (Mock Visualization) */}
+          {/* Collection Velocity / Empty State */}
           <div className="lg:col-span-7 space-y-6">
             <Scroll3D>
               <div className="flex justify-between items-end">
                 <h3 className="text-xl font-extrabold text-[#1d1b18] tracking-tight">Collection Velocity</h3>
                 <Link href="/collections" className="text-xs font-bold text-[#005259] uppercase hover:underline tracking-widest">View Analytics</Link>
               </div>
-              <div className="bg-white rounded-[2.5rem] p-8 shadow-ambient-card border border-[rgba(190,200,202,0.15)]">
-                <CollectionChart />
+              <div className="bg-white rounded-[2.5rem] p-10 shadow-ambient-card border border-[rgba(190,200,202,0.15)]">
+                {data.topCustomers.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center space-y-5">
+                    <div className="w-16 h-16 rounded-2xl bg-[#f3ede8] flex items-center justify-center text-[#005259]">
+                      <Users size={28} />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-lg font-extrabold text-[#1d1b18]">No data yet</p>
+                      <p className="text-sm font-medium text-[#6f797a] max-w-xs">
+                        Add your first customer and record a receivable — your collection chart will appear here.
+                      </p>
+                    </div>
+                    <Link href="/customers">
+                      <button className="h-12 px-8 rounded-xl bg-[#005259] text-white font-bold text-sm flex items-center gap-2 hover:bg-[#0f6c74] transition-all shadow-ambient active:scale-95">
+                        <PlusCircle size={18} /> Add First Customer
+                      </button>
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {data.topCustomers.slice(0, 4).map((c: any, i: number) => (
+                      <div key={i} className="flex items-center gap-4">
+                        <span className="text-[10px] font-black text-[#6f797a] w-16 uppercase tracking-widest truncate">{c.name.split(" ")[0]}</span>
+                        <div className="flex-1 h-8 bg-[#f3ede8] rounded-lg overflow-hidden">
+                          <div
+                            className="h-full rounded-lg transition-all duration-700"
+                            style={{
+                              width: `${Math.min(100, (c.amount / (data.outstandingAmount || 1)) * 100)}%`,
+                              backgroundColor: i === 0 ? "#005259" : i === 1 ? "#0f6c74" : "#4e696c",
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs font-black text-[#1d1b18] w-24 text-right">₹{c.amount.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </Scroll3D>
           </div>

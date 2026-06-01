@@ -1,0 +1,13 @@
+feat: UI polish, auth fixes, and missing DB table
+
+- Remove pill badge labels from every page (Attention Required, Forecast Overview, etc.)
+- Switch server actions from browser axios to server-safe fetch (server-api.ts)
+- Fix JWT access token auto-refresh in NextAuth jwt callback (15-min TTL)
+- Fix redirect loop when refresh token expires
+- Fix slider: replace @base-ui/react with @radix-ui/react-slider
+- Make collections period buttons and Review Rules interactive
+- Fix Add Customer dialog closing after success
+- Add password show/hide eye icon to register page
+- Tighten register form validation (all fields required)
+- Create missing customer_activities table in PostgreSQL
+- Clean up verbose console.log noise from auth-service and api

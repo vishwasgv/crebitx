@@ -5,12 +5,8 @@ import { TrendingUp, AlertCircle, Wallet, Sparkles, Zap } from "lucide-react"
 import Link from "next/link"
 import { Scroll3D } from "@/components/ui/scroll-3d"
 import { TopNav } from "@/components/navigation/top-nav"
+import { CalendarStrip } from "@/components/cashflow/calendar-strip"
 
-const calendarDays = [
-  { day: "Mon", date: 22 }, { day: "Tue", date: 23, active: true },
-  { day: "Wed", date: 24, hasDot: "error" }, { day: "Thu", date: 25 },
-  { day: "Fri", date: 26, hasDot: "primary" }, { day: "Sat", date: 27 }, { day: "Sun", date: 28 },
-]
 const barHeights = [40, 55, 45, 65, 85, 70, 95, 75, 60, 40, 55, 50]
 
 export default async function CashflowPage() {
@@ -30,8 +26,7 @@ export default async function CashflowPage() {
         <Scroll3D>
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
-              <span className="text-[#005259] font-bold tracking-widest text-[10px] uppercase bg-[#cae8eb] px-3 py-1 rounded-full">Forecast Overview</span>
-              <h2 className="text-4xl md:text-6xl font-extrabold text-[#1d1b18] mt-4 leading-[1.05] tracking-tight">Predictive <br />Insight</h2>
+              <h2 className="text-4xl md:text-6xl font-extrabold text-[#1d1b18] leading-[1.05] tracking-tight">Predictive <br />Insight</h2>
             </div>
             <div className="bg-white border border-[#005259]/10 rounded-[2rem] p-6 flex items-center gap-4 max-w-md shadow-ambient-card">
               <div className="w-12 h-12 rounded-2xl bg-[#cae8eb] flex items-center justify-center text-[#005259]">
@@ -64,17 +59,7 @@ export default async function CashflowPage() {
         <Scroll3D>
           <section className="space-y-6">
             <h4 className="text-xl font-extrabold tracking-tight">Payment Timeline</h4>
-            <div className="flex gap-4 overflow-x-auto no-scrollbar py-2">
-              {calendarDays.map((d) => (
-                <div key={d.date} className={`flex-shrink-0 w-24 h-28 rounded-[2rem] flex flex-col items-center justify-center space-y-2 relative transition-all ${d.active ? "bg-[#005259] text-white shadow-ambient scale-105" : "bg-white border border-[rgba(190,200,202,0.15)] shadow-ambient-card hover:bg-[#f9f3ed]"}`}>
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${d.active ? "opacity-70" : "text-[#6f797a]"}`}>{d.day}</span>
-                  <span className="text-2xl font-black">{d.date}</span>
-                  {d.active && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-                  {d.hasDot === "error" && <div className="absolute top-3 right-3 w-2.5 h-2.5 bg-[#ba1a1a] rounded-full border-2 border-white shadow-sm" />}
-                  {d.hasDot === "primary" && <div className="absolute top-3 right-3 w-2.5 h-2.5 bg-[#005259] rounded-full border-2 border-white shadow-sm" />}
-                </div>
-              ))}
-            </div>
+            <CalendarStrip />
           </section>
         </Scroll3D>
 

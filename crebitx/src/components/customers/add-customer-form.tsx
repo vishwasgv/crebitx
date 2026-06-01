@@ -18,11 +18,11 @@ const customerSchema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   address: z.string().optional(),
   creditLimit: z.number().default(0),
-  paymentCycle: z.number().default(30),
+  paymentCycle: z.number().default(15),
   gracePeriod: z.number().default(0),
 })
 
-export function AddCustomerForm() {
+export function AddCustomerForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
@@ -34,7 +34,7 @@ export function AddCustomerForm() {
   } = useForm<any>({
     resolver: zodResolver(customerSchema) as any,
     defaultValues: {
-      paymentCycle: 30,
+      paymentCycle: 15,
       creditLimit: 0,
       gracePeriod: 0,
     },
@@ -49,8 +49,8 @@ export function AddCustomerForm() {
       toast.error(result.error)
     } else {
       toast.success("Customer added successfully!")
+      onSuccess?.()
       router.refresh()
-      // Close dialog handled by parent or state
     }
   }
 
@@ -81,16 +81,15 @@ export function AddCustomerForm() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="paymentCycle">Payment Cycle (Days)</Label>
-          <Select onValueChange={(v) => setValue("paymentCycle", parseInt(v || "30"))} defaultValue="30">
+          <Select onValueChange={(v) => setValue("paymentCycle", parseInt(v || "15"))} defaultValue="15">
             <SelectTrigger>
               <SelectValue placeholder="Select cycle" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="7">7 Days</SelectItem>
               <SelectItem value="15">15 Days</SelectItem>
-              <SelectItem value="30">30 Days</SelectItem>
-              <SelectItem value="45">45 Days</SelectItem>
               <SelectItem value="60">60 Days</SelectItem>
+              <SelectItem value="90">90 Days</SelectItem>
             </SelectContent>
           </Select>
         </div>
