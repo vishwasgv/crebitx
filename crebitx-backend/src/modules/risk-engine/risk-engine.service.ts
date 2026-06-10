@@ -62,6 +62,14 @@ export class RiskEngineService {
 
       const overdueResult = await this.db.query(overdueQuery, [customerId]);
 
+      const brokenPromisesResult = await this.db.query(
+        `SELECT COUNT(*) AS broken_count
+         FROM payment_promises
+         WHERE customer_id = $1 AND status = 'BROKEN'`,
+        [customerId],
+      );
+      const brokenPromiseCount = parseInt(brokenPromisesResult.rows[0]?.broken_count || '0', 10);
+
       let score = 100; // Start with perfect score
       let level: 'GREEN' | 'YELLOW' | 'RED' = 'GREEN';
       let reason = 'Healthy payment history';
@@ -101,6 +109,20 @@ export class RiskEngineService {
           score -= 10;
           reason += `. Slightly over credit limit`;
         }
+      }
+
+      // Factor 3: Promise-to-pay reliability
+      if (brokenPromiseCount > 0) {
+        const penalty = Math.min(brokenPromiseCount * 15, 30);
+        score -= penalty;
+
+        if (brokenPromiseCount >= 2) {
+          level = 'RED';
+        } else if (level !== 'RED') {
+          level = 'YELLOW';
+        }
+
+        reason += `. ${brokenPromiseCount} broken payment promise${brokenPromiseCount > 1 ? 's' : ''}`;
       }
 
       // Ensure score stays within 0-100

@@ -15,6 +15,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto, UpdateCustomerDto, CustomerQueryDto } from './dto/customer.dto';
 import { AddLedgerEntryDto, LedgerQueryDto } from './dto/ledger.dto';
+import { CreatePaymentPromiseDto, MarkPaymentPromiseDto } from './dto/payment-promise.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantGuard } from '../auth/guards/tenant.guard';
 import { CurrentTenant } from '../auth/decorators/current-tenant.decorator';
@@ -95,5 +96,45 @@ export class CustomersController {
     @Body() dto: any,
   ) {
     return await this.customersService.addActivity(tenantId, customerId, dto);
+  }
+
+  @Post(':id/payment-promises')
+  @ApiOperation({ summary: 'Create a promise-to-pay record for a customer' })
+  @ApiResponse({ status: 201, description: 'Payment promise created successfully' })
+  async createPaymentPromise(
+    @CurrentTenant() tenantId: string,
+    @Param('id') customerId: string,
+    @Body() dto: CreatePaymentPromiseDto,
+  ) {
+    return await this.customersService.createPaymentPromise(tenantId, customerId, dto);
+  }
+
+  @Get(':id/payment-promises')
+  @ApiOperation({ summary: 'Get payment promises for a customer' })
+  @ApiResponse({ status: 200, description: 'Payment promises retrieved successfully' })
+  async getPaymentPromises(@CurrentTenant() tenantId: string, @Param('id') customerId: string) {
+    return await this.customersService.getPaymentPromises(tenantId, customerId);
+  }
+
+  @Post('payment-promises/:promiseId/mark-kept')
+  @ApiOperation({ summary: 'Mark a payment promise as kept' })
+  @ApiResponse({ status: 200, description: 'Payment promise marked as kept' })
+  async markPaymentPromiseKept(
+    @CurrentTenant() tenantId: string,
+    @Param('promiseId') promiseId: string,
+    @Body() dto: MarkPaymentPromiseDto,
+  ) {
+    return await this.customersService.markPaymentPromiseKept(tenantId, promiseId, dto);
+  }
+
+  @Post('payment-promises/:promiseId/mark-broken')
+  @ApiOperation({ summary: 'Mark a payment promise as broken' })
+  @ApiResponse({ status: 200, description: 'Payment promise marked as broken' })
+  async markPaymentPromiseBroken(
+    @CurrentTenant() tenantId: string,
+    @Param('promiseId') promiseId: string,
+    @Body() dto: MarkPaymentPromiseDto,
+  ) {
+    return await this.customersService.markPaymentPromiseBroken(tenantId, promiseId, dto);
   }
 }

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { DatabaseService } from '@/database/database.service';
 import { CreateCustomerDto, UpdateCustomerDto, CustomerQueryDto } from './dto/customer.dto';
 import { AddLedgerEntryDto, LedgerQueryDto, EntryTag } from './dto/ledger.dto';
+import { CreatePaymentPromiseDto, MarkPaymentPromiseDto } from './dto/payment-promise.dto';
 import { RiskEngineService } from '../risk-engine/risk-engine.service';
 
 @Injectable()
@@ -232,6 +233,14 @@ export class CustomersService {
     `;
     const activitiesResult = await this.db.query(activitiesQuery, [customerId]);
 
+    const paymentPromisesQuery = `
+      SELECT id, amount, promised_date, note, status, fulfilled_at, created_at, updated_at
+      FROM payment_promises
+      WHERE customer_id = $1
+      ORDER BY promised_date ASC, created_at DESC
+    `;
+    const paymentPromisesResult = await this.db.query(paymentPromisesQuery, [customerId]);
+
     return {
       id: customer.id,
       tenantId: customer.tenant_id,
@@ -278,6 +287,16 @@ export class CustomersService {
         promiseDate: a.promise_date,
         promiseAmount: a.promise_amount ? parseFloat(a.promise_amount) : null,
         createdAt: a.created_at,
+      })),
+      paymentPromises: paymentPromisesResult.rows.map((promise) => ({
+        id: promise.id,
+        amount: parseFloat(promise.amount),
+        promisedDate: promise.promised_date,
+        note: promise.note,
+        status: promise.status,
+        fulfilledAt: promise.fulfilled_at,
+        createdAt: promise.created_at,
+        updatedAt: promise.updated_at,
       })),
     };
   }
@@ -570,5 +589,160 @@ export class CustomersService {
       [tenantId, customerId, dto.type, dto.description, dto.promiseDate || null, dto.promiseAmount || null]
     );
     return { success: true, data: result.rows[0] };
+  }
+
+  async createPaymentPromise(tenantId: string, customerId: string, dto: CreatePaymentPromiseDto) {
+    const client = await this.db.getPool().connect();
+    try {
+      await client.query('BEGIN');
+
+      const customerCheck = await client.query(
+        'SELECT id FROM customers WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+        [customerId, tenantId],
+      );
+
+      if (customerCheck.rows.length === 0) {
+        throw new NotFoundException('Customer not found');
+      }
+
+      const promiseResult = await client.query(
+        `INSERT INTO payment_promises (customer_id, amount, promised_date, note)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, customer_id, amount, promised_date, note, status, fulfilled_at, created_at, updated_at`,
+        [customerId, dto.amount, dto.promisedDate, dto.note || null],
+      );
+
+      await client.query(
+        `INSERT INTO payment_promise_events (payment_promise_id, type, note)
+         VALUES ($1, $2, $3)`,
+        [promiseResult.rows[0].id, 'CREATED', dto.note || null],
+      );
+
+      await client.query('COMMIT');
+
+      const promise = promiseResult.rows[0];
+      return {
+        id: promise.id,
+        customerId: promise.customer_id,
+        amount: parseFloat(promise.amount),
+        promisedDate: promise.promised_date,
+        note: promise.note,
+        status: promise.status,
+        fulfilledAt: promise.fulfilled_at,
+        createdAt: promise.created_at,
+        updatedAt: promise.updated_at,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      this.logger.error('Failed to create payment promise', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getPaymentPromises(tenantId: string, customerId: string) {
+    const customerCheck = await this.db.query(
+      'SELECT id FROM customers WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+      [customerId, tenantId],
+    );
+
+    if (customerCheck.rows.length === 0) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    const result = await this.db.query(
+      `SELECT id, customer_id, amount, promised_date, note, status, fulfilled_at, created_at, updated_at
+       FROM payment_promises
+       WHERE customer_id = $1
+       ORDER BY promised_date ASC, created_at DESC`,
+      [customerId],
+    );
+
+    return result.rows.map((promise) => ({
+      id: promise.id,
+      customerId: promise.customer_id,
+      amount: parseFloat(promise.amount),
+      promisedDate: promise.promised_date,
+      note: promise.note,
+      status: promise.status,
+      fulfilledAt: promise.fulfilled_at,
+      createdAt: promise.created_at,
+      updatedAt: promise.updated_at,
+    }));
+  }
+
+  async markPaymentPromiseKept(tenantId: string, promiseId: string, dto: MarkPaymentPromiseDto) {
+    return await this.updatePaymentPromiseStatus(tenantId, promiseId, 'KEPT', dto.note, true);
+  }
+
+  async markPaymentPromiseBroken(tenantId: string, promiseId: string, dto: MarkPaymentPromiseDto) {
+    const promise = await this.updatePaymentPromiseStatus(tenantId, promiseId, 'BROKEN', dto.note, false);
+
+    this.riskEngine.calculateRiskScore(promise.customerId).catch((err) => {
+      this.logger.warn(`Risk recalculation failed after broken promise ${promiseId}`, err);
+    });
+
+    return promise;
+  }
+
+  private async updatePaymentPromiseStatus(
+    tenantId: string,
+    promiseId: string,
+    status: 'KEPT' | 'BROKEN',
+    note?: string,
+    markFulfilled = false,
+  ) {
+    const client = await this.db.getPool().connect();
+    try {
+      await client.query('BEGIN');
+
+      const existing = await client.query(
+        `SELECT pp.id, pp.customer_id
+         FROM payment_promises pp
+         INNER JOIN customers c ON c.id = pp.customer_id
+         WHERE pp.id = $1 AND c.tenant_id = $2 AND c.deleted_at IS NULL`,
+        [promiseId, tenantId],
+      );
+
+      if (existing.rows.length === 0) {
+        throw new NotFoundException('Payment promise not found');
+      }
+
+      const result = await client.query(
+        `UPDATE payment_promises
+         SET status = $1, fulfilled_at = CASE WHEN $2 THEN NOW() ELSE fulfilled_at END, updated_at = NOW()
+         WHERE id = $3
+         RETURNING id, customer_id, amount, promised_date, note, status, fulfilled_at, created_at, updated_at`,
+        [status, markFulfilled, promiseId],
+      );
+
+      await client.query(
+        `INSERT INTO payment_promise_events (payment_promise_id, type, note)
+         VALUES ($1, $2, $3)`,
+        [promiseId, status, note || null],
+      );
+
+      await client.query('COMMIT');
+
+      const promise = result.rows[0];
+      return {
+        id: promise.id,
+        customerId: promise.customer_id,
+        amount: parseFloat(promise.amount),
+        promisedDate: promise.promised_date,
+        note: promise.note,
+        status: promise.status,
+        fulfilledAt: promise.fulfilled_at,
+        createdAt: promise.created_at,
+        updatedAt: promise.updated_at,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      this.logger.error(`Failed to mark payment promise ${status.toLowerCase()}`, error);
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }

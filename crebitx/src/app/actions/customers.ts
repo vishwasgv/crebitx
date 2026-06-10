@@ -140,6 +140,15 @@ export async function getCustomerById(id: string) {
         promiseAmount: a.promiseAmount,
         createdAt: a.createdAt,
       })),
+      paymentPromises: (c.paymentPromises || []).map((promise: any) => ({
+        id: promise.id,
+        amount: promise.amount,
+        promisedDate: promise.promisedDate,
+        note: promise.note,
+        status: promise.status,
+        fulfilledAt: promise.fulfilledAt,
+        createdAt: promise.createdAt,
+      })),
       riskSnapshots: c.riskSnapshot
         ? [
             {
@@ -191,6 +200,26 @@ export async function addActivity(data: {
   if (!session) return { error: "Unauthorized" }
 
   try {
+    if (data.type === "PROMISE_TO_PAY") {
+      const response = await api.post(
+        `/customers/${data.customerId}/payment-promises`,
+        {
+          amount: data.promiseAmount,
+          promisedDate: data.promiseDate,
+          note: data.description,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.accessToken}`,
+          },
+        }
+      )
+
+      revalidatePath(`/customers/${data.customerId}`)
+      revalidatePath("/dashboard")
+      return { success: true, paymentPromise: response.data.data }
+    }
+
     const response = await api.post(`/customers/${data.customerId}/activities`, data, {
       headers: {
         Authorization: `Bearer ${session.user.accessToken}`,
@@ -202,6 +231,54 @@ export async function addActivity(data: {
   } catch (error: any) {
     console.error("Activity entry error:", error)
     return { error: error.message || "Failed to add activity" }
+  }
+}
+
+export async function markPaymentPromiseKept(id: string, customerId: string) {
+  const session = await auth()
+  if (!session) return { error: "Unauthorized" }
+
+  try {
+    const response = await api.post(
+      `/customers/payment-promises/${id}/mark-kept`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${session.user.accessToken}`,
+        },
+      }
+    )
+
+    revalidatePath(`/customers/${customerId}`)
+    revalidatePath("/dashboard")
+    return { success: true, promise: response.data.data }
+  } catch (error: any) {
+    console.error("Mark payment promise kept error:", error)
+    return { error: error.message || "Failed to mark promise as kept" }
+  }
+}
+
+export async function markPaymentPromiseBroken(id: string, customerId: string) {
+  const session = await auth()
+  if (!session) return { error: "Unauthorized" }
+
+  try {
+    const response = await api.post(
+      `/customers/payment-promises/${id}/mark-broken`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${session.user.accessToken}`,
+        },
+      }
+    )
+
+    revalidatePath(`/customers/${customerId}`)
+    revalidatePath("/dashboard")
+    return { success: true, promise: response.data.data }
+  } catch (error: any) {
+    console.error("Mark payment promise broken error:", error)
+    return { error: error.message || "Failed to mark promise as broken" }
   }
 }
 
