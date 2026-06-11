@@ -12,7 +12,7 @@ export class CustomersService {
   constructor(
     private readonly db: DatabaseService,
     private readonly riskEngine: RiskEngineService,
-  ) {}
+  ) { }
 
   /**
    * Create a new customer with credit profile

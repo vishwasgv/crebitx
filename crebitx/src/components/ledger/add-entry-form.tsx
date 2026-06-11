@@ -27,6 +27,7 @@ export function AddEntryForm({ customerId }: { customerId: string }) {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<z.infer<typeof entrySchema>>({
     resolver: zodResolver(entrySchema),
@@ -51,6 +52,7 @@ export function AddEntryForm({ customerId }: { customerId: string }) {
     } else {
       toast.success(`${data.tag} entry added!`)
       reset()
+      setTag("SALE")
       router.refresh()
     }
   }
@@ -60,7 +62,16 @@ export function AddEntryForm({ customerId }: { customerId: string }) {
       <div className="max-w-2xl mx-auto space-y-4">
         
         {/* Animated Tabs */}
-        <Tabs defaultValue="SALE" onValueChange={(v) => setTag(v as any)} className="w-full">
+        <Tabs 
+          defaultValue="SALE" 
+          value={tag}
+          onValueChange={(v) => {
+            const selectedTag = v as "SALE" | "PAYMENT" | "RETURN" | "ADJUSTMENT";
+            setTag(selectedTag);
+            setValue("tag", selectedTag);
+          }} 
+          className="w-full"
+        >
           <TabsList className="grid grid-cols-4 h-12 p-1.5 bg-[#f3ede8] rounded-2xl gap-1">
             <TabsTrigger value="SALE" className="rounded-xl font-bold text-[10px] uppercase tracking-widest data-[state=active]:bg-[#005259] data-[state=active]:text-white transition-all flex items-center gap-2">
               <Plus size={12} /> Sale

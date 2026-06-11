@@ -26,3 +26,20 @@ export async function getDashboardKPIs() {
   }
 }
 
+export async function getRecentActivity() {
+  const session = await auth()
+  if (!session) return []
+
+  try {
+    const response = await api.get("/dashboard/activity", {
+      headers: {
+        Authorization: `Bearer ${session.user.accessToken}`,
+      },
+    })
+    return response.data.data || []
+  } catch (error) {
+    console.error("Dashboard activity error:", error)
+    return []
+  }
+}
+
