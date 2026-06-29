@@ -1,4 +1,5 @@
-import { EntryTag } from "@prisma/client"
+// Local type replacing @prisma/client import
+type EntryTag = "SALE" | "PAYMENT" | "RETURN" | "ADJUSTMENT"
 import { format } from "date-fns"
 import { CheckCircle, FileText, AlertCircle, TrendingUp, Info, Phone, Calendar, PenTool, Handshake } from "lucide-react"
 

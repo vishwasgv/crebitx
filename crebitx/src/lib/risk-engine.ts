@@ -1,72 +1,52 @@
-import { prisma } from "./prisma"
+/**
+ * Frontend risk engine — delegates all scoring to the NestJS backend.
+ * The backend auto-calculates risk on every ledger event.
+ * This file provides a client-side helper for triggering a manual re-score
+ * or reading the latest snapshot via the API.
+ */
 
-export async function calculateRiskScore(customerId: string) {
-  const customer = await prisma.customer.findUnique({
-    where: { id: customerId },
-    include: {
-      creditProfile: true,
-      receivables: {
-        where: { isPaid: false },
-        orderBy: { dueDate: "asc" },
+const API_URL =
+  typeof process !== "undefined"
+    ? process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1"
+    : "http://localhost:4000/api/v1"
+
+/**
+ * Fetch the latest risk snapshot for a customer from the backend.
+ * The backend recalculates risk automatically on every ledger event.
+ */
+export async function getRiskSnapshot(
+  customerId: string,
+  accessToken: string
+): Promise<{ score: number; level: "GREEN" | "YELLOW" | "RED"; reason?: string } | null> {
+  try {
+    const res = await fetch(`${API_URL}/customers/${customerId}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
       },
-    },
-  })
+    })
 
-  if (!customer) return
+    if (!res.ok) return null
 
-  let score = 100 // Starting with perfect score
-  let reason = "Healthy payment history"
-  let level: "GREEN" | "YELLOW" | "RED" = "GREEN"
+    const data = await res.json()
+    const customer = data?.data || data
 
-  const now = new Date()
-  const receivables = customer.receivables
-  const profile = customer.creditProfile
-
-  // 1. Overdue check
-  const oldestOverdue = receivables.find((r: any) => r.dueDate < now)
-  if (oldestOverdue) {
-    const diffDays = Math.ceil((now.getTime() - oldestOverdue.dueDate.getTime()) / (1000 * 3600 * 24))
-    
-    if (diffDays > 30) {
-      score -= 60
-      level = "RED"
-      reason = `Critical: Overdue by ${diffDays} days`
-    } else if (diffDays > 7) {
-      score -= 30
-      level = "YELLOW"
-      reason = `Warning: Overdue by ${diffDays} days`
-    } else {
-      score -= 10
-      reason = `Minor: Overdue by ${diffDays} days`
+    return {
+      score: customer?.riskScore ?? 100,
+      level: customer?.riskLevel ?? "GREEN",
     }
+  } catch (err) {
+    console.error("getRiskSnapshot error:", err)
+    return null
   }
+}
 
-  // 2. Credit limit check
-  if (profile && profile.creditLimit > 0) {
-    const totalOutstanding = receivables.reduce((sum: number, r: any) => sum + (r.amount - r.paidAmount), 0)
-    if (totalOutstanding > profile.creditLimit) {
-      score -= 20
-      if (level !== "RED") level = "YELLOW"
-      reason += `. Credit limit exceeded (Outstanding: ₹${totalOutstanding.toLocaleString()})`
-    }
-  }
-
-  // Ensure score stays within 0-100
-  score = Math.max(0, Math.min(100, score))
-
-  // Update level based on final score if not already set by critical condition
-  if (score < 40) level = "RED"
-  else if (score < 75) level = "YELLOW"
-
-  // Save snapshot
-  await prisma.riskScoreSnapshot.create({
-    data: {
-      customerId,
-      score,
-      level,
-      reason,
-    },
-  })
-
-  return { score, level, reason }
+/**
+ * Local helper — compute a simple risk level from score without an API call.
+ * Useful for optimistic UI updates.
+ */
+export function scoreToLevel(score: number): "GREEN" | "YELLOW" | "RED" {
+  if (score < 40) return "RED"
+  if (score < 75) return "YELLOW"
+  return "GREEN"
 }

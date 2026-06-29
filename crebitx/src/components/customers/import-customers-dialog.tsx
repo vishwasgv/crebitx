@@ -1,21 +1,49 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog"
-import { Upload, FileText, CheckCircle2, AlertCircle } from "lucide-react"
+import { Upload, FileText } from "lucide-react"
 import { toast } from "sonner"
 import Papa from "papaparse"
+import * as XLSX from "xlsx"
 import { importCustomers } from "@/app/actions/import"
+
+function parseCsv(file: File): Promise<any[]> {
+  return new Promise((resolve, reject) => {
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => resolve(results.data as any[]),
+      error: reject,
+    })
+  })
+}
+
+async function parseExcel(file: File) {
+  const buffer = await file.arrayBuffer()
+  const workbook = XLSX.read(buffer, { type: "array" })
+  const firstSheetName = workbook.SheetNames[0]
+  if (!firstSheetName) return []
+  const sheet = workbook.Sheets[firstSheetName]
+  return XLSX.utils.sheet_to_json(sheet, { defval: "" }) as any[]
+}
+
+async function parseCustomerFile(file: File) {
+  const name = file.name.toLowerCase()
+  if (name.endsWith(".csv")) return parseCsv(file)
+  if (name.endsWith(".xlsx") || name.endsWith(".xls")) return parseExcel(file)
+  throw new Error("Upload CSV, XLS, or XLSX file only")
+}
 
 export function ImportCustomersDialog() {
   const [file, setFile] = useState<File | null>(null)
@@ -23,39 +51,41 @@ export function ImportCustomersDialog() {
   const [preview, setPreview] = useState<any[]>([])
   const router = useRouter()
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
-    if (selectedFile) {
+    if (!selectedFile) return
+
+    try {
       setFile(selectedFile)
-      Papa.parse(selectedFile, {
-        header: true,
-        complete: (results) => {
-          setPreview(results.data.slice(0, 5))
-        },
-      })
+      const rows = await parseCustomerFile(selectedFile)
+      setPreview(rows.slice(0, 5))
+    } catch (error: any) {
+      setFile(null)
+      setPreview([])
+      toast.error(error?.message || "Could not read file")
     }
   }
 
   const handleImport = async () => {
     if (!file) return
     setLoading(true)
-    
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        const res = await importCustomers(results.data)
-        setLoading(false)
-        if (res.success) {
-          toast.success(`Successfully imported ${res.count} customers!`)
-          router.refresh()
-          setFile(null)
-          setPreview([])
-        } else {
-          toast.error(res.error || "Import failed")
-        }
-      },
-    })
+
+    try {
+      const rows = await parseCustomerFile(file)
+      const res = await importCustomers(rows)
+      if (res.success && "count" in res) {
+        toast.success(`Successfully imported ${res.count} customers!`)
+        router.refresh()
+        setFile(null)
+        setPreview([])
+      } else {
+        toast.error(res.error || "Import failed")
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Import failed")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -67,14 +97,14 @@ export function ImportCustomersDialog() {
       } />
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Import Customers from CSV</DialogTitle>
+          <DialogTitle>Import Customers from CSV or Excel</DialogTitle>
           <DialogDescription>
-            Upload a CSV file with headers: name, phone, email, address, creditLimit, paymentCycle.
+            Upload a CSV, XLS, or XLSX file with headers: name, phone, email, address, creditLimit, paymentCycle.
           </DialogDescription>
         </DialogHeader>
 
         <div className="py-6 space-y-6">
-          <div className="border-2 border-dashed border-stone-200 rounded-xl p-8 text-center space-y-4 hover:border-crebitx-teal/50 transition-colors bg-stone-50/50">
+          <div className="relative border-2 border-dashed border-stone-200 rounded-xl p-8 text-center space-y-4 hover:border-crebitx-teal/50 transition-colors bg-stone-50/50">
             <div className="flex justify-center">
               <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center text-stone-400">
                 <FileText size={24} />
@@ -84,16 +114,21 @@ export function ImportCustomersDialog() {
               <p className="text-sm font-bold text-stone-700">
                 {file ? file.name : "Click to upload or drag and drop"}
               </p>
-              <p className="text-xs text-stone-400 font-medium">CSV files only (max 5MB)</p>
+              <p className="text-xs text-stone-400 font-medium">CSV, XLS, or XLSX files only</p>
             </div>
-            <input 
-              type="file" 
-              accept=".csv" 
-              className="absolute inset-0 opacity-0 cursor-pointer" 
+            <input
+              type="file"
+              accept=".csv,.xls,.xlsx"
+              className="absolute inset-0 opacity-0 cursor-pointer"
               onChange={handleFileChange}
             />
             {file && (
-              <Button variant="ghost" size="sm" className="text-red-500 font-bold text-[10px] uppercase" onClick={() => { setFile(null); setPreview([]) }}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="relative z-10 text-red-500 font-bold text-[10px] uppercase"
+                onClick={() => { setFile(null); setPreview([]) }}
+              >
                 Remove File
               </Button>
             )}
@@ -115,7 +150,7 @@ export function ImportCustomersDialog() {
                     {preview.map((row, i) => (
                       <tr key={i} className="border-b last:border-0">
                         {Object.values(row).map((val: any, j) => (
-                          <td key={j} className="px-3 py-2 font-medium text-stone-600">{val}</td>
+                          <td key={j} className="px-3 py-2 font-medium text-stone-600">{String(val)}</td>
                         ))}
                       </tr>
                     ))}
@@ -127,8 +162,8 @@ export function ImportCustomersDialog() {
         </div>
 
         <DialogFooter>
-          <Button 
-            className="bg-crebitx-teal hover:bg-crebitx-teal/90 w-full" 
+          <Button
+            className="bg-crebitx-teal hover:bg-crebitx-teal/90 w-full"
             disabled={!file || loading}
             onClick={handleImport}
           >

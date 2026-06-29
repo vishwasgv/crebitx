@@ -18,17 +18,17 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     const dbConfig = this.configService.get('database');
 
     this.pool = new Pool({
-      host: dbConfig.host,
-      port: dbConfig.port,
-      database: dbConfig.name,
-      user: dbConfig.user,
-      password: dbConfig.password,
-      min: dbConfig.poolMin,
-      max: dbConfig.poolMax,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
-    });
-
+  host: dbConfig.host,
+  port: dbConfig.port,
+  database: dbConfig.name,
+  user: dbConfig.user,
+  password: dbConfig.password,
+  min: dbConfig.poolMin,
+  max: dbConfig.poolMax,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+  ssl: process.env.PGSSLMODE === 'require' ? { rejectUnauthorized: false } : false,
+});
     // Handle pool errors
     this.pool.on('error', (err) => {
       this.logger.error('Unexpected database pool error', err.stack, 'DatabaseService');

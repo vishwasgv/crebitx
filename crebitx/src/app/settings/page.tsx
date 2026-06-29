@@ -1,4 +1,4 @@
-import { auth } from "@/auth"
+﻿import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { getSettings } from "@/app/actions/settings"
 import { DEFAULT_SETTINGS } from "@/lib/settings-defaults"
@@ -6,10 +6,13 @@ import { SettingsForm } from "@/components/settings/settings-form"
 import { Shield, BellRing, BrainCircuit, Sparkles } from "lucide-react"
 import { Scroll3D } from "@/components/ui/scroll-3d"
 import { TopNav } from "@/components/navigation/top-nav"
+import { canManageSettings } from "@/lib/permissions"
 
 export default async function SettingsPage() {
   const session = await auth()
   if (!session) redirect("/login")
+
+  if (!canManageSettings(session.user.role)) redirect("/dashboard")
 
   const settings = (await getSettings()) ?? DEFAULT_SETTINGS
 
@@ -61,3 +64,4 @@ export default async function SettingsPage() {
     </div>
   )
 }
+

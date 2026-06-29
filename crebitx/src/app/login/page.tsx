@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -32,20 +32,15 @@ export default function LoginPage() {
   })
 
   async function onSubmit(data: z.infer<typeof loginSchema>) {
-    console.log('🔐 Login attempt:', data.email);
     setLoading(true)
     
     try {
-      console.log('📡 Calling authService.login...');
       const result = await authService.login({
         email: data.email,
         password: data.password,
       })
       
-      console.log('✅ Login successful:', result);
-      
       if (result.tokens.accessToken) {
-        console.log('🎉 Access token received, establishing NextAuth session...');
         toast.success(`Welcome back, ${result.user.firstName || result.user.email}!`)
         
         // Establish NextAuth session cookie so Server Actions work
@@ -61,7 +56,7 @@ export default function LoginPage() {
         }, 500);
       }
     } catch (error: any) {
-      console.error('❌ Login error:', error);
+      console.error('âŒ Login error:', error);
       const errorMessage = error.response?.data?.message || error.message || "Invalid email or password";
       toast.error(errorMessage)
       setLoading(false)
@@ -152,3 +147,5 @@ export default function LoginPage() {
     </div>
   )
 }
+
+

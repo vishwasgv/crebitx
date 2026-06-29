@@ -1,4 +1,4 @@
-import { auth } from "@/auth"
+﻿import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { getCustomers } from "@/app/actions/customers"
 import { 
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog"
 import { AddCustomerForm } from "@/components/customers/add-customer-form"
 import { ImportCustomersDialog } from "@/components/customers/import-customers-dialog"
+import { canManageCustomers } from "@/lib/permissions"
 
 export default async function CustomersPage() {
   const session = await auth()
@@ -30,6 +31,7 @@ export default async function CustomersPage() {
   
   const customers = await getCustomers()
   const user = session.user
+  const canManage = canManageCustomers(user.role)
 
   return (
     <div className="min-h-screen bg-[#fef8f3] text-[#1d1b18] font-sans antialiased pb-20">
@@ -117,7 +119,7 @@ export default async function CustomersPage() {
                     <div className="flex items-center gap-8 md:gap-16">
                       <div className="text-right space-y-1">
                         <p className="text-[10px] font-black text-[#6f797a] uppercase tracking-widest">Outstanding</p>
-                        <p className="text-xl font-black text-[#1d1b18]">₹{outstanding.toLocaleString()}</p>
+                        <p className="text-xl font-black text-[#1d1b18]">â‚¹{outstanding.toLocaleString()}</p>
                       </div>
                       <div className="text-right space-y-1">
                         <p className="text-[10px] font-black text-[#6f797a] uppercase tracking-widest">Risk Level</p>
@@ -143,3 +145,5 @@ export default async function CustomersPage() {
     </div>
   )
 }
+
+

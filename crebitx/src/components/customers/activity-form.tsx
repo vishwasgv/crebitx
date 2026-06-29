@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { addActivity } from "@/app/actions/customers"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,9 +13,10 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Calendar, Phone, Handshake, PenTool } from "lucide-react"
+import { Calendar, Handshake, PenTool, Phone } from "lucide-react"
 
 export function ActivityDialog({ customerId }: { customerId: string }) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [type, setType] = useState<"CALL" | "MEETING" | "PROMISE_TO_PAY" | "NOTE">("CALL")
@@ -41,6 +43,7 @@ export function ActivityDialog({ customerId }: { customerId: string }) {
         setPromiseDate("")
         setPromiseAmount("")
         setType("CALL")
+        router.refresh()
       } else {
         alert(result.error)
       }
@@ -70,7 +73,7 @@ export function ActivityDialog({ customerId }: { customerId: string }) {
               <button
                 key={btn.id}
                 type="button"
-                onClick={() => setType(btn.id as any)}
+                onClick={() => setType(btn.id as typeof type)}
                 className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border transition-all ${
                   type === btn.id
                     ? "bg-[#005259] text-white border-[#005259]"
@@ -112,7 +115,7 @@ export function ActivityDialog({ customerId }: { customerId: string }) {
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-[#005259] uppercase tracking-widest">
-                  Amount (₹)
+                  Amount (Rs.)
                 </Label>
                 <Input
                   type="number"
@@ -126,8 +129,8 @@ export function ActivityDialog({ customerId }: { customerId: string }) {
             </div>
           )}
 
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={loading}
             className="w-full h-12 bg-[#1d1b18] hover:bg-[#32302d] text-white font-bold rounded-xl"
           >

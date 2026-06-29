@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -160,7 +160,7 @@ export default function RegisterPage() {
               <Label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest text-[#6f797a] ml-1">Password</Label>
               <div className="relative">
                 <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#bec8ca]" />
-                <Input id="password" type="password" {...register("password")} placeholder="••••••••" className="pl-11 h-12 bg-[#f9f3ed] border-none rounded-xl font-medium focus:ring-2 focus:ring-[#005259]/20 focus:bg-white transition-all" />
+                <Input id="password" type="password" {...register("password")} placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" className="pl-11 h-12 bg-[#f9f3ed] border-none rounded-xl font-medium focus:ring-2 focus:ring-[#005259]/20 focus:bg-white transition-all" />
               </div>
               {errors.password && <p className="text-[10px] text-[#ba1a1a] font-bold ml-1">{errors.password.message}</p>}
             </div>
@@ -185,3 +185,4 @@ export default function RegisterPage() {
     </div>
   )
 }
+

@@ -1,13 +1,15 @@
-"use client"
+﻿"use client"
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
 import { Bell, Settings, LayoutDashboard, Users, Sparkles, TrendingUp, Wallet, Calendar, LogOut } from "lucide-react"
 import { CREBITX_LOGO_MARK } from "@/lib/brand"
+import { canManageSettings } from "@/lib/permissions"
 
 export function TopNav({ user, alertsCount = 0 }: { user: any, alertsCount?: number }) {
   const pathname = usePathname()
+  const showSettings = canManageSettings(user?.role)
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -49,14 +51,16 @@ export function TopNav({ user, alertsCount = 0 }: { user: any, alertsCount?: num
               <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-[#ba1a1a]" />
             )}
           </Link>
-          <Link
-            href="/settings"
-            title="Settings"
-            aria-label="Open settings"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-[#f3ede8]"
-          >
-            <Settings size={20} className="text-[#3f494a]" />
-          </Link>
+          {showSettings && (
+            <Link
+              href="/settings"
+              title="Settings"
+              aria-label="Open settings"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-[#f3ede8]"
+            >
+              <Settings size={20} className="text-[#3f494a]" />
+            </Link>
+          )}
           <button
             type="button"
             title="Logout"
@@ -68,17 +72,17 @@ export function TopNav({ user, alertsCount = 0 }: { user: any, alertsCount?: num
           </button>
         </div>
       </div>
-      
+
       <nav className="flex items-center px-6 gap-6 pb-3 overflow-x-auto no-scrollbar">
         {navItems.map((item) => {
           const isActive = pathname === item.href
           return (
-            <Link 
-              key={item.href} 
-              href={item.href} 
+            <Link
+              key={item.href}
+              href={item.href}
               className={`text-sm font-bold pb-1 whitespace-nowrap transition-all border-b-2 ${
-                isActive 
-                  ? "text-[#005259] border-[#005259] font-black" 
+                isActive
+                  ? "text-[#005259] border-[#005259] font-black"
                   : "text-[#6f797a] border-transparent hover:text-[#005259]"
               }`}
             >

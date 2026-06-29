@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+﻿import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { DatabaseService } from '@/database/database.service';
 import { CreateCustomerDto, UpdateCustomerDto, CustomerQueryDto } from './dto/customer.dto';
 import { AddLedgerEntryDto, LedgerQueryDto, EntryTag } from './dto/ledger.dto';
@@ -449,11 +449,20 @@ export class CustomersService {
         const dueDate = new Date();
         dueDate.setDate(dueDate.getDate() + paymentCycle);
 
-        await client.query(
-          `INSERT INTO receivable_items (customer_id, amount, description, due_date)
-           VALUES ($1, $2, $3, $4)`,
-          [dto.customerId, dto.amount, dto.note, dueDate.toISOString().split('T')[0]],
-        );
+        const receivableResult = await client.query(
+  `INSERT INTO receivable_items (customer_id, amount, description, due_date)
+   VALUES ($1, $2, $3, $4)
+   RETURNING id, due_date`,
+  [dto.customerId, dto.amount, dto.note, dueDate.toISOString().split('T')[0]],
+);
+
+await this.scheduleReceivableReminders(
+  client,
+  dto.customerId,
+  receivableResult.rows[0].id,
+  new Date(receivableResult.rows[0].due_date),
+  dto.amount,
+);
       }
 
       // Handle PAYMENT: Allocate to oldest receivables (FIFO)
@@ -744,5 +753,37 @@ export class CustomersService {
     } finally {
       client.release();
     }
+    }
+
+  private async scheduleReceivableReminders(
+    client: any,
+    customerId: string,
+    receivableItemId: string,
+    dueDate: Date,
+    amount: number,
+  ) {
+    const reminderOffsets = [3, 1, 0];
+
+    for (const offsetDays of reminderOffsets) {
+      const scheduledFor = new Date(dueDate);
+      scheduledFor.setDate(dueDate.getDate() - offsetDays);
+
+      if (scheduledFor < new Date()) {
+        continue;
+      }
+
+      const message =
+        offsetDays === 0
+          ? `Payment of Rs. ${amount.toLocaleString()} is due today. Please complete the payment.`
+          : `Payment of Rs. ${amount.toLocaleString()} is due in ${offsetDays} day${offsetDays > 1 ? 's' : ''}. Please arrange the payment.`;
+
+      await client.query(
+        `INSERT INTO reminder_jobs (customer_id, receivable_item_id, status, scheduled_for, message)
+         VALUES ($1, $2, 'PENDING', $3, $4)`,
+        [customerId, receivableItemId, scheduledFor, message],
+      );
+    }
   }
 }
+
+

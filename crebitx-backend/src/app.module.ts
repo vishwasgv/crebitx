@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { CommonModule } from '@/common/common.module';
@@ -9,6 +9,8 @@ import { CustomersModule } from '@/modules/customers/customers.module';
 import { DashboardModule } from '@/modules/dashboard/dashboard.module';
 import { SettingsModule } from '@/modules/settings/settings.module';
 import { RiskEngineModule } from '@/modules/risk-engine/risk-engine.module';
+import { OperatingIntelligenceModule } from '@/modules/operating-intelligence/operating-intelligence.module';
+import { RemindersModule } from '@/modules/reminders/reminders.module';
 import configuration from '@/config/configuration';
 
 @Module({
@@ -39,6 +41,9 @@ import configuration from '@/config/configuration';
     DashboardModule,
     SettingsModule,
     RiskEngineModule,
+    OperatingIntelligenceModule,
+    RemindersModule,
   ],
 })
 export class AppModule {}
+

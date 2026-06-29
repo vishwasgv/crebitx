@@ -1,9 +1,10 @@
-"use server"
+﻿"use server"
 
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { api } from "@/lib/api"
+import { apiWithAuthRetry } from "@/lib/server-api"
 
 const customerSchema = z.object({
   name: z.string().min(2),
@@ -96,17 +97,12 @@ export async function getCustomers() {
 }
 
 export async function getCustomerById(id: string) {
-  const session = await auth()
-  if (!session) return null
-
   try {
-    const response = await api.get(`/customers/${id}`, {
-      headers: {
-        Authorization: `Bearer ${session.user.accessToken}`,
-      },
-    })
+    const response = await apiWithAuthRetry((headers) =>
+      api.get(`/customers/${id}`, { headers })
+    )
 
-    const c = response.data.data
+    const c = response.data?.data || response.data
     if (!c) return null
 
     return {
@@ -281,4 +277,7 @@ export async function markPaymentPromiseBroken(id: string, customerId: string) {
     return { error: error.message || "Failed to mark promise as broken" }
   }
 }
+
+
+
 

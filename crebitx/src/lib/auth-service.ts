@@ -1,4 +1,5 @@
-// Auth service using native fetch for reliability
+﻿// Auth service using native fetch for reliability
+const isDebugAuth = process.env.NEXT_PUBLIC_DEBUG_AUTH === 'true';
 
 export interface RegisterData {
   email: string;
@@ -34,8 +35,6 @@ export const authService = {
   async register(data: RegisterData): Promise<{ user: UserData; tokens: AuthTokens }> {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
     const registerUrl = `${API_URL}/auth/register`;
-    
-    console.log('📝 auth-service: Registering user:', data.email);
     
     const response = await fetch(registerUrl, {
       method: 'POST',
@@ -75,8 +74,6 @@ export const authService = {
       localStorage.setItem('refresh_token', refreshToken);
       localStorage.setItem('user', JSON.stringify(user));
     }
-    
-    console.log('✅ auth-service: Registration successful!');
     return { user, tokens: { accessToken, refreshToken } };
   },
 
@@ -88,9 +85,6 @@ export const authService = {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
       const loginUrl = `${API_URL}/auth/login`;
       
-      console.log('🔐 auth-service: Attempting login for', data.email);
-      console.log('📍 auth-service: Using URL:', loginUrl);
-      
       // Use native fetch to bypass axios caching issues
       const response = await fetch(loginUrl, {
         method: 'POST',
@@ -100,16 +94,13 @@ export const authService = {
         body: JSON.stringify(data),
       });
       
-      console.log('� auth-service: Response status:', response.status);
-      
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Login failed' }));
-        console.error('❌ auth-service: Login failed:', errorData);
+        if (isDebugAuth) console.error('auth-service login failed:', errorData);
         throw new Error(errorData.message || `Login failed with status ${response.status}`);
       }
       
       const responseData = await response.json();
-      console.log('� auth-service: Response data:', responseData);
       
       if (!responseData.success || !responseData.data) {
         throw new Error('Invalid response format from backend');
@@ -121,11 +112,8 @@ export const authService = {
         throw new Error('No tokens received from backend');
       }
       
-      console.log('🔑 auth-service: Tokens received, decoding...');
-      
       // Decode JWT to extract user info
       const decodedToken = JSON.parse(atob(accessToken.split('.')[1]));
-      console.log('📋 auth-service: Decoded token:', decodedToken);
       
       const user: UserData = {
         id: decodedToken.sub,
@@ -136,26 +124,16 @@ export const authService = {
         role: decodedToken.role,
       };
       
-      console.log('👤 auth-service: User data:', user);
-      
       // Store tokens and user info
       if (typeof window !== 'undefined') {
         localStorage.setItem('access_token', accessToken);
         localStorage.setItem('refresh_token', refreshToken);
         localStorage.setItem('user', JSON.stringify(user));
-        console.log('💾 auth-service: Tokens stored in localStorage');
       }
-      
-      console.log('✅ auth-service: Login successful!');
       return { user, tokens: { accessToken, refreshToken } };
       
     } catch (error: any) {
-      console.error('❌ auth-service: Login failed:', error);
-      console.error('Error details:', {
-        message: error.message,
-        name: error.name,
-        stack: error.stack
-      });
+      if (isDebugAuth) console.error('auth-service login failed:', error);
       
       // Throw a clean error message
       throw new Error(error.message || 'Login failed. Please check your credentials and try again.');
@@ -257,3 +235,4 @@ export const authService = {
 };
 
 export default authService;
+
