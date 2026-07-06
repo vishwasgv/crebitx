@@ -147,11 +147,11 @@ export async function getCustomerById(id: string) {
       })),
       riskSnapshots: c.riskSnapshot
         ? [
-            {
-              level: c.riskSnapshot.level || "GREEN",
-              score: c.riskSnapshot.score || 100,
-            },
-          ]
+          {
+            level: c.riskSnapshot.level || "GREEN",
+            score: c.riskSnapshot.score || 100,
+          },
+        ]
         : [],
     }
   } catch (error) {

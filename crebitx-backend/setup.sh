@@ -66,6 +66,8 @@ sleep 2  # Give PostgreSQL a moment
 
 docker exec -i crebitx-postgres psql -U crebitx_user -d crebitx < database/migrations/001_initial_setup.sql
 docker exec -i crebitx-postgres psql -U crebitx_user -d crebitx < database/migrations/002_seed_data.sql
+docker exec -i crebitx-postgres psql -U crebitx_user -d crebitx < database/migrations/004_business_tables.sql
+docker exec -i crebitx-postgres psql -U crebitx_user -d crebitx < database/migrations/005_payment_promises.sql
 
 echo -e "${GREEN}✅ Database migrations completed!${NC}"
 

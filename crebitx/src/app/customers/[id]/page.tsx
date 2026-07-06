@@ -140,6 +140,41 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
           <CreditCheckPanel customerId={customer.id} />
         </Scroll3D>
 
+        {/* Open Receivables Section */}
+        {customer.receivables && customer.receivables.length > 0 && (
+          <section className="space-y-4">
+            <Scroll3D>
+              <div className="flex items-center gap-3">
+                <Clock size={20} className="text-[#005259]" />
+                <h3 className="text-xl font-bold text-[#1d1b18]">Unpaid Invoices</h3>
+              </div>
+            </Scroll3D>
+            <div className="grid gap-3">
+              {customer.receivables.map((receivable: any) => {
+                const dueDate = new Date(receivable.dueDate)
+                const isOverdue = dueDate < new Date()
+                const outstanding = receivable.amount - receivable.paidAmount
+                
+                return (
+                  <div key={receivable.id} className="bg-white rounded-2xl p-5 border border-[rgba(190,200,202,0.15)] shadow-ambient-card flex justify-between items-center">
+                    <div>
+                      <p className="text-sm font-bold text-[#1d1b18]">Invoice ID: {receivable.id.slice(-6).toUpperCase()}</p>
+                      <p className={`text-xs font-semibold ${isOverdue ? "text-[#ba1a1a]" : "text-[#6f797a]"}`}>
+                        Due: {dueDate.toLocaleDateString("en-IN", { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {isOverdue && " (Overdue)"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-base font-extrabold text-[#1d1b18]">₹{outstanding.toLocaleString()}</p>
+                      <p className="text-[10px] font-bold text-[#bec8ca] uppercase">Balance of ₹{receivable.amount.toLocaleString()}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
         <section className="space-y-6">
           <Scroll3D>
             <div className="flex items-center gap-3 mb-2">
