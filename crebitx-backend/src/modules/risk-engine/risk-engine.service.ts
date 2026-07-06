@@ -21,6 +21,56 @@ export class RiskEngineService {
   async calculateRiskScore(customerId: string): Promise<RiskScoreResult> {
     this.logger.log(`Calculating risk score for customer: ${customerId}`);
 
+    // Try fetching from the ML Engine first
+    try {
+      const tenantResult = await this.db.query('SELECT tenant_id FROM customers WHERE id = $1 AND deleted_at IS NULL', [customerId]);
+      if (tenantResult.rows.length === 0) {
+        throw new Error('Customer not found');
+      }
+      const tenantId = tenantResult.rows[0].tenant_id;
+
+      const mlUrl = process.env.ML_ENGINE_URL || 'http://localhost:8000/api/ml/predict';
+      const mlApiKey = process.env.ML_API_KEY || 'crebitx-secret-key-for-dev';
+
+      this.logger.log(`Fetching risk score from ML Engine for customer ${customerId}`);
+      const mlResponse = await fetch(mlUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': mlApiKey,
+        },
+        body: JSON.stringify({ tenantId, customerId }),
+      });
+
+      if (!mlResponse.ok) {
+        throw new Error(`ML Engine HTTP error status=${mlResponse.status}`);
+      }
+
+      const mlData = await mlResponse.json();
+      if (mlData && mlData.risk_score) {
+        const score = mlData.risk_score.score;
+        const level = mlData.risk_score.level;
+        let reason = 'AI Risk Prediction';
+        if (mlData.explanations && mlData.explanations.length > 0) {
+          reason = mlData.explanations.map((exp: any) => exp.reason).join(' | ');
+        }
+
+        // Save snapshot
+        await this.db.query(
+          `INSERT INTO risk_score_snapshots (customer_id, score, level, reason, snapshot_date)
+           VALUES ($1, $2, $3, $4, NOW())`,
+          [customerId, score, level, reason],
+        );
+
+        this.logger.log(`ML Risk score calculated: Customer=${customerId}, Score=${score}, Level=${level}`);
+        return { score, level, reason };
+      } else {
+        throw new Error('ML Engine response missing risk_score');
+      }
+    } catch (err) {
+      this.logger.warn(`Failed to connect to ML Engine: ${err.message}. Falling back to heuristics.`);
+    }
+
     try {
       // Get customer details
       const customerQuery = `

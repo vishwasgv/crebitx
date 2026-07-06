@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
@@ -277,7 +277,14 @@ export async function markPaymentPromiseBroken(id: string, customerId: string) {
     return { error: error.message || "Failed to mark promise as broken" }
   }
 }
-
-
-
-
+export async function getCustomerMLIntelligence(id: string) {
+  try {
+    const response = await apiWithAuthRetry((headers) =>
+      api.get(`/customers/${id}/ml-intelligence`, { headers })
+    )
+    return response.data?.data || null
+  } catch (error) {
+    console.error("Get customer ML intelligence error:", error)
+    return null
+  }
+}

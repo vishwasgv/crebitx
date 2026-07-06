@@ -98,6 +98,14 @@ export class CustomersController {
     return await this.customersService.addActivity(tenantId, customerId, dto);
   }
 
+  @Get(':id/ml-intelligence')
+  @ApiOperation({ summary: 'Get ML predictions and cashflow insights for a customer' })
+  @ApiResponse({ status: 200, description: 'ML insights retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Customer not found' })
+  async getMLIntelligence(@CurrentTenant() tenantId: string, @Param('id') customerId: string) {
+    return await this.customersService.getMLIntelligence(tenantId, customerId);
+  }
+
   @Post(':id/payment-promises')
   @ApiOperation({ summary: 'Create a promise-to-pay record for a customer' })
   @ApiResponse({ status: 201, description: 'Payment promise created successfully' })

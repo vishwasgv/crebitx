@@ -1,4 +1,4 @@
-import { getCustomerById } from "@/app/actions/customers"
+import { getCustomerById, getCustomerMLIntelligence } from "@/app/actions/customers"
 import { getCollectionPattern } from "@/app/actions/operating-intelligence"
 import { notFound } from "next/navigation"
 import Link from "next/link"
@@ -34,13 +34,19 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
   if (!customer) notFound()
 
+  // Fetch ML predictions
+  const mlResponse = await getCustomerMLIntelligence(customer.id)
+  const mlData = mlResponse?.success ? mlResponse.data : null
+
   const collectionPattern = await getCollectionPattern(customer.id)
   const collectionPatterns = collectionPattern?.patterns || []
   const totalCollectionAttempts = collectionPatterns.reduce((sum: number, pattern: any) => sum + Number(pattern.count || 0), 0)
   const bestCollectionPattern = collectionPatterns[0]
   const totalOutstanding = (customer.receivables || []).reduce((sum: number, r: any) => sum + (r.amount - r.paidAmount), 0)
+  
   const risk = customer.riskSnapshots?.[0]
-  const riskLevel = risk?.level || "GREEN"
+  const riskScore = mlData?.risk_score?.score ?? (risk?.score || 100)
+  const riskLevel = mlData?.risk_score?.level ?? (risk?.level || "GREEN")
 
   const riskConfig = (({
     RED: { text: "text-[#ba1a1a]", bg: "bg-[#ffdad6]/40", dot: "bg-[#ba1a1a]", label: "High Risk" },
@@ -99,10 +105,10 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               <div className="space-y-2">
                 <div className="flex justify-between text-[10px] font-bold text-[#6f797a] uppercase">
                   <span>Trust Score</span>
-                  <span>{risk?.score || 100}%</span>
+                  <span>{riskScore}%</span>
                 </div>
                 <div className="h-2 bg-white/50 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full transition-all duration-1000 ${riskConfig.dot}`} style={{ width: `${risk?.score || 100}%` }} />
+                  <div className={`h-full rounded-full transition-all duration-1000 ${riskConfig.dot}`} style={{ width: `${riskScore}%` }} />
                 </div>
               </div>
             </div>
@@ -139,6 +145,56 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         <Scroll3D>
           <CreditCheckPanel customerId={customer.id} />
         </Scroll3D>
+
+        {/* AI Explainability & Timeline Predictions */}
+        {mlData && (
+          <Scroll3D>
+            <div className="space-y-4 bg-white rounded-[2.5rem] p-10 border border-[rgba(190,200,202,0.15)] shadow-ambient-card">
+              <h3 className="text-xl font-bold text-[#1d1b18] flex items-center gap-3">
+                <ShieldAlert size={20} className="text-[#005259]" /> AI Risk Intelligence
+              </h3>
+              
+              {/* SHAP Explanations */}
+              {mlData.explanations && mlData.explanations.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {mlData.explanations.map((exp: any, i: number) => (
+                    <div key={i} className="bg-white px-5 py-3 rounded-xl shadow-ambient border border-[#005259]/10 text-sm font-semibold flex items-start gap-3">
+                      <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${exp.impact > 0 ? 'bg-[#ba1a1a]' : 'bg-[#4CAF50]'}`} />
+                      <span className="text-[#3f494a]">{exp.reason}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-[#cae8eb]/40 text-[#005259] px-5 py-3 rounded-xl text-sm font-bold border border-[#cae8eb]">
+                  Healthy profile. No anomalous behaviors detected.
+                </div>
+              )}
+
+              {/* Survival Analysis Timeline Predictions */}
+              {mlData.timeline_predictions && mlData.timeline_predictions.length > 0 && (
+                <div className="mt-6 pt-6 border-t border-[rgba(190,200,202,0.2)]">
+                  <h4 className="text-xs font-bold text-[#6f797a] uppercase tracking-widest mb-3">Predicted Cash Inflows</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {mlData.timeline_predictions.map((pred: any, i: number) => {
+                      const date = new Date(pred.predictedPaidDate).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" })
+                      return (
+                        <div key={i} className="bg-white border border-[rgba(190,200,202,0.3)] p-4 rounded-2xl flex justify-between items-center shadow-ambient-card">
+                          <div>
+                            <p className="text-[#6f797a] text-[10px] font-black uppercase tracking-wider">Expected On</p>
+                            <p className="font-extrabold text-[#1d1b18] mt-0.5">{date}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-extrabold text-[#005259]">₹{pred.amount.toLocaleString()}</p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Scroll3D>
+        )}
 
         {/* Open Receivables Section */}
         {customer.receivables && customer.receivables.length > 0 && (

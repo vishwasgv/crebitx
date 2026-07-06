@@ -1,4 +1,4 @@
-﻿import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { DatabaseService } from '@/database/database.service';
 import { CreateCustomerDto, UpdateCustomerDto, CustomerQueryDto } from './dto/customer.dto';
 import { AddLedgerEntryDto, LedgerQueryDto, EntryTag } from './dto/ledger.dto';
@@ -754,6 +754,41 @@ await this.scheduleReceivableReminders(
       client.release();
     }
     }
+
+  async getMLIntelligence(tenantId: string, customerId: string) {
+    const customerCheck = await this.db.query(
+      'SELECT id FROM customers WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+      [customerId, tenantId],
+    );
+
+    if (customerCheck.rows.length === 0) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    const mlUrl = process.env.ML_ENGINE_URL || 'http://localhost:8000/api/ml/predict';
+    const mlApiKey = process.env.ML_API_KEY || 'crebitx-secret-key-for-dev';
+
+    try {
+      const response = await fetch(mlUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': mlApiKey,
+        },
+        body: JSON.stringify({ tenantId, customerId }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`ML Engine returned status ${response.status}`);
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      this.logger.warn(`Failed to fetch ML intelligence for customer ${customerId}: ${error.message}`);
+      return { success: false, error: 'ML Engine unavailable or model not trained' };
+    }
+  }
 
   private async scheduleReceivableReminders(
     client: any,
