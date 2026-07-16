@@ -57,41 +57,47 @@ export async function getCustomers() {
   if (!session) return []
 
   try {
-    const response = await api.get("/customers", {
-      headers: {
-        Authorization: `Bearer ${session.user.accessToken}`,
-      },
-    })
+    const response = await apiWithAuthRetry((headers) =>
+      api.get("/customers", { headers })
+    )
 
-    const payload = response.data.data
+    const payload = response.data?.data || response.data
     const customersList = payload?.data || payload || []
 
-    return customersList.map((c: any) => ({
-      id: c.id,
-      tenantId: c.tenantId,
-      name: c.name,
-      phone: c.phone || "",
-      email: c.email || "",
-      address: c.address || "",
-      createdAt: c.createdAt,
-      updatedAt: c.updatedAt,
-      creditProfile: c.creditProfile,
-      receivables: [
-        {
-          amount: c.outstandingBalance || 0,
-          paidAmount: 0,
-          isPaid: false,
-        },
-      ],
-      riskSnapshots: [
-        {
-          level: c.riskLevel || "GREEN",
-          score: c.riskScore || 100,
-        },
-      ],
-    }))
-  } catch (error) {
-    console.error("Get customers error:", error)
+    return customersList.map((c: any) => {
+      const outstanding = c.outstandingBalance || 0
+      const creditLimit = c.creditProfile?.creditLimit || 100000
+      const utilization = creditLimit > 0 ? outstanding / creditLimit : 0
+      const heuristicLevel = utilization > 0.8 ? "RED" : utilization > 0.5 ? "YELLOW" : "GREEN"
+      const heuristicScore = Math.max(0, Math.round((1 - utilization) * 100))
+
+      return {
+        id: c.id,
+        tenantId: c.tenantId,
+        name: c.name,
+        phone: c.phone || "",
+        email: c.email || "",
+        address: c.address || "",
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+        creditProfile: c.creditProfile,
+        receivables: [
+          {
+            amount: outstanding,
+            paidAmount: 0,
+            isPaid: false,
+          },
+        ],
+        riskSnapshots: [
+          {
+            level: c.riskLevel || heuristicLevel,
+            score: c.riskScore ?? heuristicScore,
+          },
+        ],
+      }
+    })
+  } catch (error: any) {
+    console.error("Get customers error:", error.response?.data || error.message || error)
     return []
   }
 }
@@ -282,7 +288,11 @@ export async function getCustomerMLIntelligence(id: string) {
     const response = await apiWithAuthRetry((headers) =>
       api.get(`/customers/${id}/ml-intelligence`, { headers })
     )
-    return response.data?.data || null
+    // Backend returns { success, data: { success, data: { features, risk_score, ... } } }
+    // We need to unwrap to the innermost data object
+    const outer = response.data?.data
+    const mlPayload = outer?.data || outer
+    return mlPayload || null
   } catch (error) {
     console.error("Get customer ML intelligence error:", error)
     return null

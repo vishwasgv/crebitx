@@ -28,8 +28,13 @@ def fetch_training_data():
     for c in customers:
         feats = compute_all_features(DATABASE_URL, c['tenantId'], c['id'])
         
-        # Risk Model Labeling (1 if average delay > 15 days, else 0)
-        label = 1 if feats["rolling_DSO_90"] > 15 else 0
+        # Risk Model Labeling: Use a composite metric so the model learns a blend of features
+        # rather than memorizing a single threshold.
+        risk_metric = (feats.get("rolling_DSO_90", 0) / 30.0) + \
+                      feats.get("credit_utilisation_rate", 0) + \
+                      (feats.get("broken_promise_count_30d", 0) * 0.5) + \
+                      (1.0 - feats.get("promise_kept_ratio", 1.0))
+        label = 1 if risk_metric > 1.5 else 0
         
         feature_row = [
             feats.get("rolling_DSO_30", 0),
@@ -82,7 +87,7 @@ if __name__ == "__main__":
     train_models()
 
     # Test Module 1
-    features = compute_all_features(DATABASE_URL, 't1', 'c1')
+    features = compute_all_features(DATABASE_URL, '550e8400-e29b-41d4-a716-446655440001', '6d94014a-7070-4e2b-b958-3d3c8b3123da')
     print("--- Module 1: Features ---")
     print(json.dumps(features, indent=2))
     

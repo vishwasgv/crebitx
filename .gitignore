@@ -19,8 +19,10 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+*-audit.json
 
 # Environment
+.env
 .env.local
 .env.development.local
 .env.test.local
@@ -32,3 +34,14 @@ postgres_data/
 # Temp
 tmp/
 temp/
+
+# Python (ml-engine)
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+catboost_info/
+
+# Next.js generated (stray copies outside crebitx/)
+next-env.d.ts

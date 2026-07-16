@@ -75,9 +75,12 @@ def predict_customer(req: PredictRequest, api_key: str = Depends(get_api_key)):
     from psycopg2.extras import RealDictCursor
     conn_url = DATABASE_URL.split('?')[0] if '?' in DATABASE_URL else DATABASE_URL
     conn = psycopg2.connect(conn_url, cursor_factory=RealDictCursor)
-    cur = conn.cursor()
-    cur.execute('SELECT id, due_date as "dueDate", amount, paid_amount as "paidAmount" FROM receivable_items WHERE customer_id = %s AND is_paid = false', (req.customerId,))
-    unpaid_db = cur.fetchall()
+    try:
+        with conn.cursor() as cur:
+            cur.execute('SELECT id, due_date as "dueDate", amount, paid_amount as "paidAmount" FROM receivable_items WHERE customer_id = %s AND is_paid = false', (req.customerId,))
+            unpaid_db = cur.fetchall()
+    finally:
+        conn.close()
     
     unpaid = []
     total_expected_30d = 0.0
@@ -90,8 +93,6 @@ def predict_customer(req: PredictRequest, api_key: str = Depends(get_api_key)):
                 "amount": amt
             })
             total_expected_30d += amt
-            
-    conn.close()
     
     timeline_preds = predict_payment_dates(features, unpaid)
     

@@ -34,12 +34,14 @@ def compute_temporal_features(conn, tenant_id: str, customer_id: str):
             "payment_interval_entropy": 0.0,
         }
         
-    df['delay_days'] = (pd.to_datetime(df['paymentDate']) - pd.to_datetime(df['dueDate'])).dt.days
+    payment_dt = pd.to_datetime(df['paymentDate']).dt.tz_localize(None)
+    due_dt = pd.to_datetime(df['dueDate']).dt.tz_localize(None)
+    df['delay_days'] = (payment_dt - due_dt).dt.days
     df['delay_days'] = df['delay_days'].apply(lambda x: max(0, x))
     
     now = datetime.now()
-    df_30 = df[pd.to_datetime(df['paymentDate']) >= now - timedelta(days=30)]
-    df_90 = df[pd.to_datetime(df['paymentDate']) >= now - timedelta(days=90)]
+    df_30 = df[payment_dt >= now - timedelta(days=30)]
+    df_90 = df[payment_dt >= now - timedelta(days=90)]
     
     rolling_dso_30 = df_30['delay_days'].mean() if not df_30.empty else 0.0
     rolling_dso_90 = df_90['delay_days'].mean() if not df_90.empty else 0.0
@@ -53,7 +55,7 @@ def compute_temporal_features(conn, tenant_id: str, customer_id: str):
         payment_variance = 0.0
 
     # Payment interval entropy
-    df['payment_interval'] = pd.to_datetime(df['paymentDate']).diff().dt.days
+    df['payment_interval'] = payment_dt.diff().dt.days
     intervals = df['payment_interval'].dropna().tolist()
     if len(intervals) > 1:
         # compute entropy using scipy
@@ -90,15 +92,39 @@ def compute_credit_features(conn, tenant_id: str, customer_id: str):
         limit_row = cur.fetchone()
         limit = limit_row['creditLimit'] if limit_row and limit_row['creditLimit'] > 0 else 1.0
         
-    utilisation = unpaid / limit if limit > 0 else 0.0
+    utilisation = float(unpaid) / float(limit) if float(limit) > 0 else 0.0
     return {"credit_utilisation_rate": float(utilisation)}
+
+def compute_overdue_features(conn, customer_id: str):
+    # Currently open, unpaid receivables that are past their due date.
+    # This is distinct from rolling_DSO_*, which only measures delay on
+    # ALREADY-paid invoices (via payment_allocations). Without this signal,
+    # a customer who has simply never paid a long-overdue invoice looks
+    # identical to a brand-new customer with no history -> both get
+    # rolling_DSO_30/90 = 0, which silently hides real, active risk.
+    query = """
+        SELECT
+            COALESCE(MAX((CURRENT_DATE - due_date)), 0) as max_days_overdue,
+            COUNT(*) as overdue_item_count,
+            COALESCE(SUM(amount - paid_amount), 0) as overdue_amount
+        FROM receivable_items
+        WHERE customer_id = %s AND is_paid = false AND due_date < CURRENT_DATE
+    """
+    with conn.cursor() as cur:
+        cur.execute(query, (customer_id,))
+        row = cur.fetchone()
+
+    return {
+        "max_days_overdue": float(row['max_days_overdue']) if row else 0.0,
+        "overdue_item_count": int(row['overdue_item_count']) if row else 0,
+        "overdue_amount": float(row['overdue_amount']) if row else 0.0,
+    }
 
 def compute_promise_features(conn, customer_id: str):
     # Query promises
     query = """
-        SELECT pr.status, pr.promised_date as "promisedDate", pr.updated_at as "updatedAt", p.payment_date as "paymentDate"
+        SELECT pr.status, pr.promised_date as "promisedDate", pr.updated_at as "updatedAt", pr.fulfilled_at as "paymentDate"
         FROM payment_promises pr
-        LEFT JOIN payment_allocations p ON pr.receivable_item_id = p.receivable_item_id
         WHERE pr.customer_id = %s
     """
     try:
@@ -114,19 +140,19 @@ def compute_promise_features(conn, customer_id: str):
         kept = len(df[df['status'] == 'KEPT'])
         
         now = datetime.now()
-        broken_30d = len(df[(df['status'] == 'BROKEN') & (pd.to_datetime(df['updatedAt']) >= now - timedelta(days=30))])
+        broken_30d = len(df[(df['status'] == 'BROKEN') & (pd.to_datetime(df['updatedAt']).dt.tz_localize(None) >= now - timedelta(days=30))])
         
         # Calculate average delay of payments past the promised date
         avg_delay = 0.0
         df_broken = df[(df['status'] == 'BROKEN') & df['paymentDate'].notnull()]
         if not df_broken.empty:
-            df_broken['delay'] = (pd.to_datetime(df_broken['paymentDate']) - pd.to_datetime(df_broken['promisedDate'])).dt.days
+            df_broken['delay'] = (pd.to_datetime(df_broken['paymentDate']).dt.tz_localize(None) - pd.to_datetime(df_broken['promisedDate']).dt.tz_localize(None)).dt.days
             avg_delay = df_broken['delay'].apply(lambda x: max(0, x)).mean()
         
         return {
             "promise_kept_ratio": float(kept / total),
             "broken_promise_count_30d": broken_30d,
-            "avg_promise_delay_days": float(avg_delay)
+            "avg_promise_delay_days": float(avg_delay) if not pd.isna(avg_delay) else 0.0
         }
     except psycopg2.errors.UndefinedTable:
         # Table not created yet, return defaults
@@ -157,6 +183,7 @@ def compute_all_features(database_url: str, tenant_id: str, customer_id: str):
     try:
         temporal = compute_temporal_features(conn, tenant_id, customer_id)
         credit = compute_credit_features(conn, tenant_id, customer_id)
+        overdue = compute_overdue_features(conn, customer_id)
         promises = compute_promise_features(conn, customer_id)
         graph = compute_graph_features(conn, tenant_id, customer_id)
         
@@ -182,7 +209,7 @@ def compute_all_features(database_url: str, tenant_id: str, customer_id: str):
             
             if all_payments:
                 df_all = pd.DataFrame(all_payments)
-                df_all['delay'] = (pd.to_datetime(df_all['paymentDate']) - pd.to_datetime(df_all['dueDate'])).dt.days
+                df_all['delay'] = (pd.to_datetime(df_all['paymentDate']).dt.tz_localize(None) - pd.to_datetime(df_all['dueDate']).dt.tz_localize(None)).dt.days
                 baseline = pd.DataFrame({
                     "dso": df_all['delay'].rolling(30, min_periods=1).mean().fillna(0).values,
                     "var": df_all['delay'].rolling(30, min_periods=1).std().fillna(0).values,
@@ -206,6 +233,7 @@ def compute_all_features(database_url: str, tenant_id: str, customer_id: str):
             "customer_id": customer_id,
             **temporal,
             **credit,
+            **overdue,
             **promises,
             **graph,
             "anomaly_score": float(anomaly_score),

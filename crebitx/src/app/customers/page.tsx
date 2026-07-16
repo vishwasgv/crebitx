@@ -1,4 +1,4 @@
-﻿import { auth } from "@/auth"
+import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { getCustomers } from "@/app/actions/customers"
 import { 
@@ -119,7 +119,7 @@ export default async function CustomersPage() {
                     <div className="flex items-center gap-8 md:gap-16">
                       <div className="text-right space-y-1">
                         <p className="text-[10px] font-black text-[#6f797a] uppercase tracking-widest">Outstanding</p>
-                        <p className="text-xl font-black text-[#1d1b18]">â‚¹{outstanding.toLocaleString()}</p>
+                        <p className="text-xl font-black text-[#1d1b18]">₹{outstanding.toLocaleString()}</p>
                       </div>
                       <div className="text-right space-y-1">
                         <p className="text-[10px] font-black text-[#6f797a] uppercase tracking-widest">Risk Level</p>

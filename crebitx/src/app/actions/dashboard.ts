@@ -65,7 +65,7 @@ export async function getRecentActivity() {
   if (!session) return []
 
   try {
-    const response = await api.get("/dashboard/activity", {
+    const response = await api.get("/dashboard/activity?limit=20", {
       headers: {
         Authorization: `Bearer ${session.user.accessToken}`,
       },

@@ -36,7 +36,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
   // Fetch ML predictions
   const mlResponse = await getCustomerMLIntelligence(customer.id)
-  const mlData = mlResponse?.success ? mlResponse.data : null
+  const mlData = mlResponse
 
   const collectionPattern = await getCollectionPattern(customer.id)
   const collectionPatterns = collectionPattern?.patterns || []
@@ -45,7 +45,12 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
   const totalOutstanding = (customer.receivables || []).reduce((sum: number, r: any) => sum + (r.amount - r.paidAmount), 0)
   
   const risk = customer.riskSnapshots?.[0]
-  const riskScore = mlData?.risk_score?.score ?? (risk?.score || 100)
+  // Both ML score and DB snapshot score are risk probability (0-100, higher = riskier).
+  // Trust Score = 100 - riskProbability in all cases.
+  const mlRiskProb = mlData?.risk_score?.score
+  const dbRiskProb = risk?.score
+  const riskProbability = mlRiskProb ?? dbRiskProb ?? 0
+  const trustScore = Math.max(0, 100 - riskProbability)
   const riskLevel = mlData?.risk_score?.level ?? (risk?.level || "GREEN")
 
   const riskConfig = (({
@@ -105,10 +110,10 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
               <div className="space-y-2">
                 <div className="flex justify-between text-[10px] font-bold text-[#6f797a] uppercase">
                   <span>Trust Score</span>
-                  <span>{riskScore}%</span>
+                  <span>{trustScore}%</span>
                 </div>
                 <div className="h-2 bg-white/50 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full transition-all duration-1000 ${riskConfig.dot}`} style={{ width: `${riskScore}%` }} />
+                  <div className={`h-full rounded-full transition-all duration-1000 ${riskConfig.dot}`} style={{ width: `${trustScore}%` }} />
                 </div>
               </div>
             </div>
@@ -159,7 +164,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                 <div className="flex flex-col gap-2">
                   {mlData.explanations.map((exp: any, i: number) => (
                     <div key={i} className="bg-white px-5 py-3 rounded-xl shadow-ambient border border-[#005259]/10 text-sm font-semibold flex items-start gap-3">
-                      <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${exp.impact > 0 ? 'bg-[#ba1a1a]' : 'bg-[#4CAF50]'}`} />
+                      <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${exp.impact === 'high' ? 'bg-[#ba1a1a]' : exp.impact === 'medium' ? 'bg-[#F4C430]' : 'bg-[#4CAF50]'}`} />
                       <span className="text-[#3f494a]">{exp.reason}</span>
                     </div>
                   ))}

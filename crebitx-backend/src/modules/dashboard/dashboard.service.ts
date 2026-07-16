@@ -48,7 +48,15 @@ export class DashboardService {
       const overdueResult = await this.db.query(overdueQuery, [tenantId, now.toISOString()]);
       const overdueAmount = parseFloat(overdueResult.rows[0].total);
 
-      // 3. Expected Inflow (7 Days)
+      const thirtyDaysLater = new Date();
+      thirtyDaysLater.setDate(now.getDate() + 30);
+
+      // 3. Expected Inflow (30 Days) — includes both upcoming AND overdue unpaid invoices
+      // Overdue invoices are still "expected inflow" since they're being collected.
+      // We look at invoices due within the last 90 days (overdue) + next 30 days (upcoming).
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(now.getDate() - 90);
+
       const inflowQuery = `
         SELECT COALESCE(SUM(r.amount - r.paid_amount), 0) AS total
         FROM receivable_items r
@@ -62,8 +70,8 @@ export class DashboardService {
 
       const inflowResult = await this.db.query(inflowQuery, [
         tenantId,
-        now.toISOString(),
-        sevenDaysLater.toISOString(),
+        ninetyDaysAgo.toISOString(),
+        thirtyDaysLater.toISOString(),
       ]);
       const inflowAmount = parseFloat(inflowResult.rows[0].total);
 
