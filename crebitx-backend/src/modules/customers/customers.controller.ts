@@ -106,6 +106,14 @@ export class CustomersController {
     return await this.customersService.getMLIntelligence(tenantId, customerId);
   }
 
+  @Post(':id/risk/recalculate')
+  @ApiOperation({ summary: 'Recalculate a customer risk score now (ML Engine first, heuristic fallback)' })
+  @ApiResponse({ status: 200, description: 'Risk score recalculated successfully' })
+  @ApiResponse({ status: 404, description: 'Customer not found' })
+  async recalculateRisk(@CurrentTenant() tenantId: string, @Param('id') customerId: string) {
+    return await this.customersService.recalculateRisk(tenantId, customerId);
+  }
+
   @Post(':id/payment-promises')
   @ApiOperation({ summary: 'Create a promise-to-pay record for a customer' })
   @ApiResponse({ status: 201, description: 'Payment promise created successfully' })

@@ -42,19 +42,24 @@ def predict_customer(req: PredictRequest, api_key: str = Depends(get_api_key)):
     if not os.path.exists(risk_model_path) or not os.path.exists(timeline_model_path):
         raise HTTPException(status_code=400, detail="Models are not trained yet. Call /api/ml/train first.")
         
-    # Connect to Redis for caching
+    # Connect to Redis for caching. Short TTL only: this exists to dedupe
+    # rapid repeated calls (e.g. double page-loads), not to serve data across
+    # real changes. A long TTL here previously meant a customer's score stayed
+    # frozen at whatever it was on first prediction, ignoring later payments,
+    # new sales, or newly-overdue invoices.
     import redis
     import json
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    feature_cache_ttl = int(os.getenv("FEATURE_CACHE_TTL_SECONDS", "60"))
     cache = redis.from_url(redis_url)
-    
+
     cache_key = f"features_{req.tenantId}_{req.customerId}"
     cached_feats = None
     try:
         cached_feats = cache.get(cache_key)
     except Exception as e:
         print(f"Redis cache error: {e}")
-        
+
     if cached_feats:
         print(f"Cache HIT for {cache_key}")
         features = json.loads(cached_feats)
@@ -63,7 +68,7 @@ def predict_customer(req: PredictRequest, api_key: str = Depends(get_api_key)):
         # 1. Signal Refinery (extract features from PostgreSQL)
         features = compute_all_features(DATABASE_URL, req.tenantId, req.customerId)
         try:
-            cache.setex(cache_key, 3600, json.dumps(features))
+            cache.setex(cache_key, feature_cache_ttl, json.dumps(features))
         except Exception:
             pass
     

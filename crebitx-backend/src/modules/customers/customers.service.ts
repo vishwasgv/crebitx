@@ -765,29 +765,39 @@ await this.scheduleReceivableReminders(
       throw new NotFoundException('Customer not found');
     }
 
-    const mlUrl = process.env.ML_ENGINE_URL || 'http://localhost:8000/api/ml/predict';
-    const mlApiKey = process.env.ML_API_KEY || 'crebitx-secret-key-for-dev';
-
     try {
-      const response = await fetch(mlUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': mlApiKey,
-        },
-        body: JSON.stringify({ tenantId, customerId }),
+      const data = await this.riskEngine.fetchMlPrediction(tenantId, customerId);
+
+      // Persist as the customer's canonical risk snapshot so list/dashboard
+      // views pick up the same fresh score shown here, without blocking the response.
+      this.riskEngine.persistMlSnapshot(customerId, data).catch((err) => {
+        this.logger.warn(`Failed to persist ML snapshot for customer ${customerId}: ${err.message}`);
       });
 
-      if (!response.ok) {
-        throw new Error(`ML Engine returned status ${response.status}`);
-      }
-
-      const data = await response.json();
       return { success: true, data };
     } catch (error) {
       this.logger.warn(`Failed to fetch ML intelligence for customer ${customerId}: ${error.message}`);
       return { success: false, error: 'ML Engine unavailable or model not trained' };
     }
+  }
+
+  /**
+   * Force an immediate risk score recalculation for a customer (ML Engine
+   * first, heuristic fallback on failure), instead of waiting for the next
+   * ledger event or background worker tick.
+   */
+  async recalculateRisk(tenantId: string, customerId: string) {
+    const customerCheck = await this.db.query(
+      'SELECT id FROM customers WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+      [customerId, tenantId],
+    );
+
+    if (customerCheck.rows.length === 0) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    const result = await this.riskEngine.calculateRiskScore(customerId);
+    return { success: true, data: result };
   }
 
   private async scheduleReceivableReminders(

@@ -26,6 +26,7 @@ import { WhatsAppDialog } from "@/components/alerts/whatsapp-dialog"
 import { ActivityDialog } from "@/components/customers/activity-form"
 import { PaymentPromisesPanel } from "@/components/customers/payment-promises-panel"
 import { CreditCheckPanel } from "@/components/customers/credit-check-panel"
+import { RecalculateRiskButton } from "@/components/customers/recalculate-risk-button"
 import { Scroll3D } from "@/components/ui/scroll-3d"
 
 export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -34,9 +35,11 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
 
   if (!customer) notFound()
 
-  // Fetch ML predictions
+  // Fetch ML predictions. The backend returns a `{success:false, error}` shape
+  // (not null) when the ML Engine is unreachable, so gate on risk_score being
+  // present rather than truthiness of the response itself.
   const mlResponse = await getCustomerMLIntelligence(customer.id)
-  const mlData = mlResponse
+  const mlData = mlResponse?.risk_score ? mlResponse : null
 
   const collectionPattern = await getCollectionPattern(customer.id)
   const collectionPatterns = collectionPattern?.patterns || []
@@ -115,6 +118,12 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
                 <div className="h-2 bg-white/50 rounded-full overflow-hidden">
                   <div className={`h-full rounded-full transition-all duration-1000 ${riskConfig.dot}`} style={{ width: `${trustScore}%` }} />
                 </div>
+              </div>
+              <div className="mt-5 flex items-center justify-between">
+                <span className={`text-[10px] font-black uppercase tracking-widest ${riskConfig.text} opacity-70`}>
+                  {mlData ? "Live model score" : "Last saved score"}
+                </span>
+                <RecalculateRiskButton customerId={customer.id} />
               </div>
             </div>
           </div>

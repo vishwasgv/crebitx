@@ -283,6 +283,24 @@ export async function markPaymentPromiseBroken(id: string, customerId: string) {
     return { error: error.message || "Failed to mark promise as broken" }
   }
 }
+export async function recalculateCustomerRisk(id: string) {
+  try {
+    const response = await apiWithAuthRetry((headers) =>
+      api.post(`/customers/${id}/risk/recalculate`, {}, { headers })
+    )
+
+    revalidatePath(`/customers/${id}`)
+    revalidatePath("/customers")
+    revalidatePath("/dashboard")
+
+    const outer = response.data?.data
+    return { success: true, risk: outer?.data || outer }
+  } catch (error: any) {
+    console.error("Recalculate customer risk error:", error)
+    return { success: false, error: error.message || "Failed to recalculate risk score" }
+  }
+}
+
 export async function getCustomerMLIntelligence(id: string) {
   try {
     const response = await apiWithAuthRetry((headers) =>

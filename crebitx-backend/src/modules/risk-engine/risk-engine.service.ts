@@ -14,9 +14,61 @@ export class RiskEngineService {
   constructor(private readonly db: DatabaseService) {}
 
   /**
-   * Calculate risk score for a customer based on:
-   * 1. Overdue days (60% weight)
-   * 2. Credit limit exceeded (40% weight)
+   * Calls the ML engine's /api/ml/predict for a customer. Throws if the
+   * engine is unreachable, errors, or returns a payload without a risk_score.
+   */
+  async fetchMlPrediction(tenantId: string, customerId: string): Promise<any> {
+    const mlUrl = process.env.ML_ENGINE_URL || 'http://localhost:8000/api/ml/predict';
+    const mlApiKey = process.env.ML_API_KEY || 'crebitx-secret-key-for-dev';
+
+    const mlResponse = await fetch(mlUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': mlApiKey,
+      },
+      body: JSON.stringify({ tenantId, customerId }),
+    });
+
+    if (!mlResponse.ok) {
+      throw new Error(`ML Engine HTTP error status=${mlResponse.status}`);
+    }
+
+    const mlData = await mlResponse.json();
+    if (!mlData || !mlData.risk_score) {
+      throw new Error('ML Engine response missing risk_score');
+    }
+
+    return mlData;
+  }
+
+  /**
+   * Persists an ML engine prediction as the customer's latest risk snapshot,
+   * so any successful ML call (detail-page view, worker tick, manual
+   * recalculation) becomes the canonical score read by list/dashboard views.
+   */
+  async persistMlSnapshot(customerId: string, mlData: any): Promise<RiskScoreResult> {
+    const score = mlData.risk_score.score;
+    const level = mlData.risk_score.level;
+    let reason = 'AI Risk Prediction';
+    if (mlData.explanations && mlData.explanations.length > 0) {
+      reason = mlData.explanations.map((exp: any) => exp.reason).join(' | ');
+    }
+
+    await this.db.query(
+      `INSERT INTO risk_score_snapshots (customer_id, score, level, reason, snapshot_date)
+       VALUES ($1, $2, $3, $4, NOW())`,
+      [customerId, score, level, reason],
+    );
+
+    this.logger.log(`ML Risk score calculated: Customer=${customerId}, Score=${score}, Level=${level}`);
+    return { score, level, reason };
+  }
+
+  /**
+   * Calculate risk score for a customer. Tries the ML Engine first; falls
+   * back to a hand-coded heuristic (overdue days / credit overage / broken
+   * promises) only if the ML Engine is unreachable or errors.
    */
   async calculateRiskScore(customerId: string): Promise<RiskScoreResult> {
     this.logger.log(`Calculating risk score for customer: ${customerId}`);
@@ -29,44 +81,9 @@ export class RiskEngineService {
       }
       const tenantId = tenantResult.rows[0].tenant_id;
 
-      const mlUrl = process.env.ML_ENGINE_URL || 'http://localhost:8000/api/ml/predict';
-      const mlApiKey = process.env.ML_API_KEY || 'crebitx-secret-key-for-dev';
-
       this.logger.log(`Fetching risk score from ML Engine for customer ${customerId}`);
-      const mlResponse = await fetch(mlUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': mlApiKey,
-        },
-        body: JSON.stringify({ tenantId, customerId }),
-      });
-
-      if (!mlResponse.ok) {
-        throw new Error(`ML Engine HTTP error status=${mlResponse.status}`);
-      }
-
-      const mlData = await mlResponse.json();
-      if (mlData && mlData.risk_score) {
-        const score = mlData.risk_score.score;
-        const level = mlData.risk_score.level;
-        let reason = 'AI Risk Prediction';
-        if (mlData.explanations && mlData.explanations.length > 0) {
-          reason = mlData.explanations.map((exp: any) => exp.reason).join(' | ');
-        }
-
-        // Save snapshot
-        await this.db.query(
-          `INSERT INTO risk_score_snapshots (customer_id, score, level, reason, snapshot_date)
-           VALUES ($1, $2, $3, $4, NOW())`,
-          [customerId, score, level, reason],
-        );
-
-        this.logger.log(`ML Risk score calculated: Customer=${customerId}, Score=${score}, Level=${level}`);
-        return { score, level, reason };
-      } else {
-        throw new Error('ML Engine response missing risk_score');
-      }
+      const mlData = await this.fetchMlPrediction(tenantId, customerId);
+      return await this.persistMlSnapshot(customerId, mlData);
     } catch (err) {
       this.logger.warn(`Failed to connect to ML Engine: ${err.message}. Falling back to heuristics.`);
     }
@@ -261,5 +278,31 @@ export class RiskEngineService {
       reason: row.reason,
       outstandingAmount: parseFloat(row.outstanding_amount),
     }));
+  }
+
+  /**
+   * Customer ids whose latest risk snapshot is missing or older than
+   * `olderThanMs`. Used by the background worker to refresh stale scores
+   * without recalculating every customer on every tick.
+   */
+  async getCustomersWithStaleRisk(olderThanMs: number, limit: number): Promise<string[]> {
+    const result = await this.db.query(
+      `SELECT c.id
+       FROM customers c
+       LEFT JOIN LATERAL (
+         SELECT snapshot_date
+         FROM risk_score_snapshots
+         WHERE customer_id = c.id
+         ORDER BY snapshot_date DESC
+         LIMIT 1
+       ) rs ON TRUE
+       WHERE c.deleted_at IS NULL
+         AND (rs.snapshot_date IS NULL OR rs.snapshot_date < NOW() - ($1 || ' milliseconds')::interval)
+       ORDER BY rs.snapshot_date ASC NULLS FIRST
+       LIMIT $2`,
+      [olderThanMs, limit],
+    );
+
+    return result.rows.map((row: any) => row.id);
   }
 }
