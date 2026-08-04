@@ -12,6 +12,12 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
+export interface RegisterResult {
+  success: true;
+  requiresVerification: true;
+  email: string;
+}
+
 export interface UserFromToken {
   id: string;
   email: string;

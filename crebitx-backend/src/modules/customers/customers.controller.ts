@@ -107,7 +107,9 @@ export class CustomersController {
   }
 
   @Post(':id/risk/recalculate')
-  @ApiOperation({ summary: 'Recalculate a customer risk score now (ML Engine first, heuristic fallback)' })
+  @ApiOperation({
+    summary: 'Recalculate a customer risk score now (ML Engine first, heuristic fallback)',
+  })
   @ApiResponse({ status: 200, description: 'Risk score recalculated successfully' })
   @ApiResponse({ status: 404, description: 'Customer not found' })
   async recalculateRisk(@CurrentTenant() tenantId: string, @Param('id') customerId: string) {
@@ -152,5 +154,21 @@ export class CustomersController {
     @Body() dto: MarkPaymentPromiseDto,
   ) {
     return await this.customersService.markPaymentPromiseBroken(tenantId, promiseId, dto);
+  }
+
+  @Get(':id/payment-probability')
+  @ApiOperation({ summary: 'Get self-service/negotiated/escalated payment probability breakdown' })
+  @ApiResponse({ status: 200, description: 'Payment probability retrieved successfully' })
+  async getPaymentProbability(@CurrentTenant() tenantId: string, @Param('id') customerId: string) {
+    return await this.customersService.getPaymentProbability(tenantId, customerId);
+  }
+
+  @Get(':id/engagement-timeline')
+  @ApiOperation({
+    summary: 'Get merged reminder/promise/outcome engagement history for a customer',
+  })
+  @ApiResponse({ status: 200, description: 'Engagement timeline retrieved successfully' })
+  async getEngagementTimeline(@CurrentTenant() tenantId: string, @Param('id') customerId: string) {
+    return await this.customersService.getEngagementTimeline(tenantId, customerId);
   }
 }

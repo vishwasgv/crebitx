@@ -38,43 +38,75 @@ export class OperatingIntelligenceController {
 
   @Post('actions/:id/accept')
   @ApiOperation({ summary: 'Accept a recommended action' })
-  acceptAction(@CurrentTenant() tenantId: string, @Param('id') actionId: string, @Body() body: any) {
+  acceptAction(
+    @CurrentTenant() tenantId: string,
+    @Param('id') actionId: string,
+    @Body() body: any,
+  ) {
     return this.intelligenceService.recordActionEvent(tenantId, actionId, 'ACCEPTED', body?.note);
   }
 
   @Post('actions/:id/postpone')
   @ApiOperation({ summary: 'Postpone a recommended action' })
-  postponeAction(@CurrentTenant() tenantId: string, @Param('id') actionId: string, @Body() body: any) {
+  postponeAction(
+    @CurrentTenant() tenantId: string,
+    @Param('id') actionId: string,
+    @Body() body: any,
+  ) {
     return this.intelligenceService.recordActionEvent(tenantId, actionId, 'POSTPONED', body?.note);
   }
 
   @Post('actions/:id/dismiss')
   @ApiOperation({ summary: 'Dismiss a recommended action' })
-  dismissAction(@CurrentTenant() tenantId: string, @Param('id') actionId: string, @Body() body: any) {
+  dismissAction(
+    @CurrentTenant() tenantId: string,
+    @Param('id') actionId: string,
+    @Body() body: any,
+  ) {
     return this.intelligenceService.recordActionEvent(tenantId, actionId, 'DISMISSED', body?.note);
   }
 
   @Post('credit/check')
   @ApiOperation({ summary: 'Run credit decision checkpoint before new SALE' })
-  checkCredit(@CurrentTenant() tenantId: string, @Body() body: { customerId: string; amount: number }) {
+  checkCredit(
+    @CurrentTenant() tenantId: string,
+    @Body() body: { customerId: string; amount: number },
+  ) {
     return this.intelligenceService.checkCredit(tenantId, body);
   }
 
   @Post('credit/check/:id/approve')
   @ApiOperation({ summary: 'Approve a credit decision check' })
-  approveCreditCheck(@CurrentTenant() tenantId: string, @Param('id') checkId: string, @Body() body: any) {
+  approveCreditCheck(
+    @CurrentTenant() tenantId: string,
+    @Param('id') checkId: string,
+    @Body() body: any,
+  ) {
     return this.intelligenceService.resolveCreditCheck(tenantId, checkId, 'APPROVED', body?.reason);
   }
 
   @Post('credit/check/:id/override')
   @ApiOperation({ summary: 'Override a credit decision check' })
-  overrideCreditCheck(@CurrentTenant() tenantId: string, @Param('id') checkId: string, @Body() body: any) {
-    return this.intelligenceService.resolveCreditCheck(tenantId, checkId, 'OVERRIDDEN', body?.reason);
+  overrideCreditCheck(
+    @CurrentTenant() tenantId: string,
+    @Param('id') checkId: string,
+    @Body() body: any,
+  ) {
+    return this.intelligenceService.resolveCreditCheck(
+      tenantId,
+      checkId,
+      'OVERRIDDEN',
+      body?.reason,
+    );
   }
 
   @Post('credit/check/:id/block')
   @ApiOperation({ summary: 'Block a credit decision check' })
-  blockCreditCheck(@CurrentTenant() tenantId: string, @Param('id') checkId: string, @Body() body: any) {
+  blockCreditCheck(
+    @CurrentTenant() tenantId: string,
+    @Param('id') checkId: string,
+    @Body() body: any,
+  ) {
     return this.intelligenceService.resolveCreditCheck(tenantId, checkId, 'BLOCKED', body?.reason);
   }
 
@@ -108,6 +140,18 @@ export class OperatingIntelligenceController {
     return this.intelligenceService.getDisciplineSummary(tenantId);
   }
 
+  @Get('discipline/activity-journal')
+  @ApiOperation({ summary: 'Get per-event completed/missed follow-up activity journal' })
+  getActivityJournal(
+    @CurrentTenant() tenantId: string,
+    @Query('filter') filter?: 'all' | 'missed',
+  ) {
+    return this.intelligenceService.getActivityJournal(
+      tenantId,
+      filter === 'missed' ? 'missed' : 'all',
+    );
+  }
+
   @Get('reviews/weekly/current')
   @ApiOperation({ summary: 'Get current weekly review with rule suggestions' })
   getWeeklyReview(@CurrentTenant() tenantId: string) {
@@ -116,13 +160,21 @@ export class OperatingIntelligenceController {
 
   @Post('reviews/weekly/:id/apply-suggestion')
   @ApiOperation({ summary: 'Apply weekly rule suggestion' })
-  applyWeeklySuggestion(@CurrentTenant() tenantId: string, @Param('id') reviewId: string, @Body() body: any) {
+  applyWeeklySuggestion(
+    @CurrentTenant() tenantId: string,
+    @Param('id') reviewId: string,
+    @Body() body: any,
+  ) {
     return this.intelligenceService.applyWeeklySuggestion(tenantId, reviewId, body?.suggestionId);
   }
 
   @Post('reviews/weekly/:id/dismiss-suggestion')
   @ApiOperation({ summary: 'Dismiss weekly rule suggestion' })
-  dismissWeeklySuggestion(@CurrentTenant() tenantId: string, @Param('id') reviewId: string, @Body() body: any) {
+  dismissWeeklySuggestion(
+    @CurrentTenant() tenantId: string,
+    @Param('id') reviewId: string,
+    @Body() body: any,
+  ) {
     return this.intelligenceService.dismissWeeklySuggestion(tenantId, reviewId, body?.suggestionId);
   }
 }

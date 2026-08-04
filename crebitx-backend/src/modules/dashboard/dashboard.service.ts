@@ -6,7 +6,7 @@ export interface DashboardKPIs {
   overdueAmount: number;
   inflowAmount: number;
   topCustomers: Array<{ name: string; amount: number }>;
-  alerts: Array<{ name: string; amount: number; overdue: string; phone: string }>;
+  alerts: Array<{ customerId: string; name: string; amount: number; overdue: string; phone: string }>;
 }
 
 @Injectable()
@@ -97,7 +97,8 @@ export class DashboardService {
 
       // 5. Critical Alerts (HIGH RISK customers with overdue amounts)
       const alertsQuery = `
-        SELECT 
+        SELECT
+          c.id AS customer_id,
           c.name,
           c.phone,
           COALESCE(SUM(r.amount - r.paid_amount), 0) AS amount,
@@ -120,6 +121,7 @@ export class DashboardService {
 
       const alertsResult = await this.db.query(alertsQuery, [tenantId, now.toISOString()]);
       const alerts = alertsResult.rows.map((row: any) => ({
+        customerId: row.customer_id,
         name: row.name,
         amount: parseFloat(row.amount),
         overdue: `${row.overdue_count} item${row.overdue_count > 1 ? 's' : ''} overdue`,
@@ -188,8 +190,9 @@ export class DashboardService {
    */
   async getRecentActivity(tenantId: string, limit: number = 20) {
     const query = `
-      SELECT 
+      SELECT
         le.id,
+        le.customer_id,
         le.amount,
         le.tag,
         le.note,
@@ -206,6 +209,7 @@ export class DashboardService {
 
     return result.rows.map((row: any) => ({
       id: row.id,
+      customerId: row.customer_id,
       amount: parseFloat(row.amount),
       tag: row.tag,
       note: row.note,

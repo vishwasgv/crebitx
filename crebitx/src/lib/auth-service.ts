@@ -97,7 +97,11 @@ export const authService = {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Login failed' }));
         if (isDebugAuth) console.error('auth-service login failed:', errorData);
-        throw new Error(errorData.message || `Login failed with status ${response.status}`);
+        const error: Error & { code?: string } = new Error(
+          errorData.message || `Login failed with status ${response.status}`
+        );
+        error.code = errorData.code;
+        throw error;
       }
       
       const responseData = await response.json();
@@ -134,9 +138,14 @@ export const authService = {
       
     } catch (error: any) {
       if (isDebugAuth) console.error('auth-service login failed:', error);
-      
-      // Throw a clean error message
-      throw new Error(error.message || 'Login failed. Please check your credentials and try again.');
+
+      // Preserve the error code (e.g. EMAIL_NOT_VERIFIED) so callers can
+      // react to it, while still normalizing the message.
+      const cleanError: Error & { code?: string } = new Error(
+        error.message || 'Login failed. Please check your credentials and try again.'
+      );
+      cleanError.code = error.code;
+      throw cleanError;
     }
   },
 

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
-import { Bell, Settings, LayoutDashboard, Users, Sparkles, TrendingUp, Wallet, Calendar, LogOut } from "lucide-react"
+import { Bell, Settings, LayoutDashboard, Users, Sparkles, TrendingUp, Wallet, Calendar, LogOut, Zap } from "lucide-react"
 import { CREBITX_LOGO_MARK } from "@/lib/brand"
 import { canManageSettings } from "@/lib/permissions"
 
@@ -13,6 +13,7 @@ export function TopNav({ user, alertsCount = 0 }: { user: any, alertsCount?: num
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Brief", href: "/daily-brief", icon: Zap },
     { name: "Customers", href: "/customers", icon: Users },
     { name: "Actions", href: "/actions", icon: Sparkles },
     { name: "Alerts", href: "/alerts", icon: Bell, badge: alertsCount },

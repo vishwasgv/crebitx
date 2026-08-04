@@ -121,7 +121,11 @@ export class OperatingIntelligenceService {
       const riskLevel = row.risk_level || 'GREEN';
       const brokenPromises = parseInt(row.broken_promises || '0', 10);
       const actionType =
-        riskLevel === 'RED' || brokenPromises > 0 ? 'HOLD_CREDIT_AND_CALL' : overdueDays > 7 ? 'SEND_STRICT_REMINDER' : 'SEND_FRIENDLY_REMINDER';
+        riskLevel === 'RED' || brokenPromises > 0
+          ? 'HOLD_CREDIT_AND_CALL'
+          : overdueDays > 7
+            ? 'SEND_STRICT_REMINDER'
+            : 'SEND_FRIENDLY_REMINDER';
       const title =
         actionType === 'HOLD_CREDIT_AND_CALL'
           ? `Call ${row.name} and hold new credit`
@@ -146,7 +150,12 @@ export class OperatingIntelligenceService {
     return await this.filterOpenRecommendedActions(tenantId, actions);
   }
 
-  async recordActionEvent(tenantId: string, actionId: string, eventType: ActionEvent, note?: string) {
+  async recordActionEvent(
+    tenantId: string,
+    actionId: string,
+    eventType: ActionEvent,
+    note?: string,
+  ) {
     await this.db.query(
       `INSERT INTO recommended_action_events (action_id, tenant_id, event_type, note)
        VALUES ($1, $2, $3, $4)`,
@@ -207,15 +216,22 @@ export class OperatingIntelligenceService {
     const reasons: string[] = [];
 
     if (overdueDays > 0) reasons.push(`${overdueDays} overdue day${overdueDays === 1 ? '' : 's'}`);
-    if (brokenPromises > 0) reasons.push(`${brokenPromises} broken promise${brokenPromises === 1 ? '' : 's'}`);
+    if (brokenPromises > 0)
+      reasons.push(`${brokenPromises} broken promise${brokenPromises === 1 ? '' : 's'}`);
     if (creditLimit > 0 && projectedOutstanding > creditLimit) {
-      reasons.push(`projected outstanding exceeds credit limit by Rs. ${(projectedOutstanding - creditLimit).toLocaleString()}`);
+      reasons.push(
+        `projected outstanding exceeds credit limit by Rs. ${(projectedOutstanding - creditLimit).toLocaleString()}`,
+      );
     }
 
     const recommendation =
-      overdueDays > 14 || brokenPromises >= 2 || (creditLimit > 0 && projectedOutstanding > creditLimit * 1.2)
+      overdueDays > 14 ||
+      brokenPromises >= 2 ||
+      (creditLimit > 0 && projectedOutstanding > creditLimit * 1.2)
         ? 'BLOCK'
-        : overdueDays > 0 || brokenPromises > 0 || (creditLimit > 0 && projectedOutstanding > creditLimit)
+        : overdueDays > 0 ||
+            brokenPromises > 0 ||
+            (creditLimit > 0 && projectedOutstanding > creditLimit)
           ? 'REQUIRE_PART_PAYMENT'
           : 'APPROVE';
     const checkId = `credit-${dto.customerId}-${Date.now()}`;
@@ -239,7 +255,12 @@ export class OperatingIntelligenceService {
     };
   }
 
-  async resolveCreditCheck(tenantId: string, checkId: string, decision: CreditDecision, reason?: string) {
+  async resolveCreditCheck(
+    tenantId: string,
+    checkId: string,
+    decision: CreditDecision,
+    reason?: string,
+  ) {
     await this.db.query(
       `UPDATE credit_decision_checks
        SET status = $1, resolved_at = NOW()
@@ -296,15 +317,15 @@ export class OperatingIntelligenceService {
 
     const kept = parseInt(promiseResult.rows[0]?.kept || '0', 10);
     const broken = parseInt(promiseResult.rows[0]?.broken || '0', 10);
-    const promiseKeptRatio = kept + broken === 0 ? null : Math.round((kept / (kept + broken)) * 100);
+    const promiseKeptRatio =
+      kept + broken === 0 ? null : Math.round((kept / (kept + broken)) * 100);
 
     return {
       customerId,
       promiseKeptRatio,
-      bestFollowUpPattern:
-        result.rows[0] ?
-          `${result.rows[0].tone} ${result.rows[0].channel} usually leads to ${result.rows[0].outcome_status}.` :
-          'Not enough outcome history yet. Start tracking reminder/call results.',
+      bestFollowUpPattern: result.rows[0]
+        ? `${result.rows[0].tone} ${result.rows[0].channel} usually leads to ${result.rows[0].outcome_status}.`
+        : 'Not enough outcome history yet. Start tracking reminder/call results.',
       patterns: result.rows.map((row: any) => ({
         channel: row.channel,
         tone: row.tone,
@@ -382,6 +403,91 @@ export class OperatingIntelligenceService {
     };
   }
 
+  /**
+   * Per-event feed of individual completed vs. missed follow-up actions
+   * (reminders sent, promises kept/broken), for the Credit/discipline page's
+   * activity journal. Complements getDisciplineSummary's aggregate counts.
+   */
+  async getActivityJournal(tenantId: string, filter: 'all' | 'missed' = 'all', limit = 20) {
+    const [sentReminders, missedReminders, promiseOutcomes] = await Promise.all([
+      this.db.query(
+        `SELECT r.id, c.id AS customer_id, c.name, r.message, r.sent_at
+         FROM reminder_jobs r
+         INNER JOIN customers c ON c.id = r.customer_id
+         WHERE c.tenant_id = $1 AND r.status = 'SENT' AND r.sent_at IS NOT NULL
+         ORDER BY r.sent_at DESC LIMIT $2`,
+        [tenantId, limit],
+      ),
+      this.db.query(
+        `SELECT r.id, c.id AS customer_id, c.name, r.message, r.scheduled_for
+         FROM reminder_jobs r
+         INNER JOIN customers c ON c.id = r.customer_id
+         WHERE c.tenant_id = $1 AND r.status = 'PENDING' AND r.scheduled_for < NOW()
+         ORDER BY r.scheduled_for DESC LIMIT $2`,
+        [tenantId, limit],
+      ),
+      this.db.query(
+        `SELECT pp.id, c.id AS customer_id, c.name, pp.amount, pp.status, pp.promised_date, pp.fulfilled_at, pp.updated_at
+         FROM payment_promises pp
+         INNER JOIN customers c ON c.id = pp.customer_id
+         WHERE c.tenant_id = $1 AND pp.status IN ('KEPT', 'BROKEN')
+         ORDER BY pp.updated_at DESC LIMIT $2`,
+        [tenantId, limit],
+      ),
+    ]);
+
+    const items: any[] = [];
+
+    for (const r of sentReminders.rows) {
+      items.push({
+        id: `journal-reminder-${r.id}`,
+        status: 'COMPLETED',
+        customerId: r.customer_id,
+        title: `${r.name} - Reminder Sent`,
+        detail: r.message || 'Reminder delivered.',
+        amountLabel: null,
+        timestamp: r.sent_at,
+      });
+    }
+
+    for (const r of missedReminders.rows) {
+      items.push({
+        id: `journal-missed-${r.id}`,
+        status: 'MISSED',
+        customerId: r.customer_id,
+        title: `${r.name} - Reminder Overdue`,
+        detail: 'Scheduled reminder was not sent by its target time.',
+        amountLabel: null,
+        timestamp: r.scheduled_for,
+      });
+    }
+
+    for (const p of promiseOutcomes.rows) {
+      const amount = parseFloat(p.amount || 0);
+      items.push({
+        id: `journal-promise-${p.id}`,
+        status: p.status === 'KEPT' ? 'COMPLETED' : 'MISSED',
+        customerId: p.customer_id,
+        title: `${p.name} - Promise to Pay`,
+        detail:
+          p.status === 'KEPT'
+            ? `Rs. ${amount.toLocaleString()} secured promise fulfilled.`
+            : `Rs. ${amount.toLocaleString()} promise missed (due ${new Date(p.promised_date).toLocaleDateString('en-IN')}).`,
+        amountLabel: p.status === 'KEPT' ? `+Rs. ${amount.toLocaleString()}` : null,
+        timestamp: p.fulfilled_at || p.updated_at,
+      });
+    }
+
+    const sorted = items
+      .filter((item) => !!item.timestamp)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    const filtered =
+      filter === 'missed' ? sorted.filter((item) => item.status === 'MISSED') : sorted;
+
+    return filtered.slice(0, limit);
+  }
+
   async getWeeklyReview(tenantId: string) {
     const kpis = await this.getKpiSnapshot(tenantId);
     const wins = await this.getRecoveryWins(tenantId);
@@ -393,7 +499,10 @@ export class OperatingIntelligenceService {
       {
         id: `${reviewId}-risk`,
         title: `${kpis.redCustomers} red-risk customers need policy attention`,
-        detail: kpis.redCustomers > 0 ? 'Review credit limits before approving fresh sales.' : 'Risk spread is currently stable.',
+        detail:
+          kpis.redCustomers > 0
+            ? 'Review credit limits before approving fresh sales.'
+            : 'Risk spread is currently stable.',
         severity: kpis.redCustomers > 0 ? 'HIGH' : 'INFO',
       },
       {
@@ -408,7 +517,8 @@ export class OperatingIntelligenceService {
       {
         id: `${reviewId}-limit`,
         title: 'Tighten credit for red-risk accounts',
-        detail: 'Require part payment before new SALE entries when overdue or broken promises exist.',
+        detail:
+          'Require part payment before new SALE entries when overdue or broken promises exist.',
       },
       {
         id: `${reviewId}-tone`,
@@ -473,7 +583,14 @@ export class OperatingIntelligenceService {
     };
   }
 
-  private async upsertDailyBrief(tenantId: string, briefId: string, date: string, summary: string, moneyAtRisk: number, items: any[]) {
+  private async upsertDailyBrief(
+    tenantId: string,
+    briefId: string,
+    date: string,
+    summary: string,
+    moneyAtRisk: number,
+    items: any[],
+  ) {
     await this.db.query(
       `INSERT INTO daily_briefs (id, tenant_id, business_date, summary, money_at_risk)
        VALUES ($1, $2, $3, $4, $5)
@@ -517,7 +634,15 @@ export class OperatingIntelligenceService {
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (id)
          DO UPDATE SET title = EXCLUDED.title, reason = EXCLUDED.reason, priority = EXCLUDED.priority, updated_at = NOW()`,
-        [action.id, tenantId, action.customerId, action.actionType, action.title, action.reason, action.priority],
+        [
+          action.id,
+          tenantId,
+          action.customerId,
+          action.actionType,
+          action.title,
+          action.reason,
+          action.priority,
+        ],
       );
     }
   }
@@ -534,4 +659,3 @@ export class OperatingIntelligenceService {
     return date.toISOString().slice(0, 10);
   }
 }
-

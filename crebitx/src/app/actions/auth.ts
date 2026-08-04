@@ -1,6 +1,8 @@
 "use server"
 
 import { z } from "zod"
+import { api } from "@/lib/api"
+import { apiWithAuthRetry } from "@/lib/server-api"
 
 const registerSchema = z.object({
   name: z.string().min(2),
@@ -61,21 +63,84 @@ export async function registerUser(formData: z.infer<typeof registerSchema>) {
       return { error: data.message || "Registration failed" }
     }
 
-    // Return tokens to be stored on client side
-    if (data.success && data.data.accessToken) {
-      return { 
-        success: true, 
-        tokens: {
-          accessToken: data.data.accessToken,
-          refreshToken: data.data.refreshToken 
-        }
-      }
+    // Registration no longer signs the user in directly — the backend sends
+    // a verification email and blocks login until it's confirmed.
+    if (data.success && data.data?.requiresVerification) {
+      return { success: true, requiresVerification: true, email: data.data.email as string }
     }
 
     return { success: true }
   } catch (error) {
     console.error("Registration error:", error)
     return { error: "Something went wrong during registration. Please check if the backend is running." }
+  }
+}
+
+export async function resendVerificationEmail(email: string) {
+  try {
+    const response = await fetch(`${API_URL}/auth/verify-email/resend`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      return { error: data.message || "Failed to resend verification email" }
+    }
+    return { success: true }
+  } catch (error) {
+    console.error("Resend verification email error:", error)
+    return { error: "Something went wrong. Please check if the backend is running." }
+  }
+}
+
+export async function verifyEmailToken(token: string) {
+  try {
+    const response = await fetch(`${API_URL}/auth/verify-email?token=${encodeURIComponent(token)}`)
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      return { error: data.message || "Invalid or expired verification link" }
+    }
+    return { success: true }
+  } catch (error) {
+    console.error("Verify email token error:", error)
+    return { error: "Something went wrong. Please check if the backend is running." }
+  }
+}
+
+export async function requestPasswordReset(email: string) {
+  try {
+    const response = await fetch(`${API_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      return { error: data.message || "Failed to request password reset" }
+    }
+    return { success: true }
+  } catch (error) {
+    console.error("Request password reset error:", error)
+    return { error: "Something went wrong. Please check if the backend is running." }
+  }
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  try {
+    const response = await fetch(`${API_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword }),
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      return { error: data.message || "Failed to reset password" }
+    }
+    return { success: true }
+  } catch (error) {
+    console.error("Reset password error:", error)
+    return { error: "Something went wrong. Please check if the backend is running." }
   }
 }
 
@@ -109,5 +174,42 @@ export async function loginUser(formData: { email: string; password: string }) {
   } catch (error) {
     console.error("Login error:", error)
     return { error: "Something went wrong during login. Please check if the backend is running." }
+  }
+}
+
+// --- Phone verification (SMS OTP), for the logged-in user ---
+
+export async function getVerificationStatus() {
+  try {
+    const response = await apiWithAuthRetry((headers) => api.get("/auth/verify/status", { headers }))
+    return response.data?.data ?? null
+  } catch (error) {
+    console.error("Get verification status error:", error)
+    return null
+  }
+}
+
+function extractErrorMessage(error: unknown, fallback: string): string {
+  const shaped = error as { data?: { message?: string }; message?: string } | undefined
+  return shaped?.data?.message || shaped?.message || fallback
+}
+
+export async function sendPhoneOtp() {
+  try {
+    const response = await apiWithAuthRetry((headers) => api.post("/auth/verify/send", {}, { headers }))
+    return { success: true, data: response.data?.data }
+  } catch (error) {
+    console.error("Send phone OTP error:", error)
+    return { error: extractErrorMessage(error, "Failed to send verification code") }
+  }
+}
+
+export async function confirmPhoneOtp(code: string) {
+  try {
+    const response = await apiWithAuthRetry((headers) => api.post("/auth/verify/confirm", { code }, { headers }))
+    return { success: true, data: response.data?.data }
+  } catch (error) {
+    console.error("Confirm phone OTP error:", error)
+    return { error: extractErrorMessage(error, "Incorrect or expired code") }
   }
 }

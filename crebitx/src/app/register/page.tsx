@@ -6,12 +6,11 @@ import Link from "next/link"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { registerUser } from "@/app/actions/auth"
+import { registerUser, resendVerificationEmail } from "@/app/actions/auth"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { ArrowRight, User, Mail, Phone, Briefcase, Lock } from "lucide-react"
-import { signIn } from "next-auth/react"
+import { ArrowRight, User, Mail, Phone, Briefcase, Lock, MailCheck } from "lucide-react"
 
 const registerSchema = z.object({
   name: z.string().min(2, "Name is too short"),
@@ -23,6 +22,8 @@ const registerSchema = z.object({
 
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [submitted, setSubmitted] = useState<{ email: string } | null>(null)
   const router = useRouter()
 
   const { register, handleSubmit, formState: { errors } } = useForm<z.infer<typeof registerSchema>>({
@@ -36,35 +37,23 @@ export default function RegisterPage() {
 
     if (result.error) {
       toast.error(result.error)
-    } else if (result.success && result.tokens) {
-      // Store tokens in localStorage
-      localStorage.setItem('access_token', result.tokens.accessToken)
-      localStorage.setItem('refresh_token', result.tokens.refreshToken)
-      
-      // Decode token to get user info
-      const decodedToken = JSON.parse(atob(result.tokens.accessToken.split('.')[1]))
-      const user = {
-        id: decodedToken.sub,
-        email: decodedToken.email,
-        firstName: decodedToken.firstName || '',
-        lastName: decodedToken.lastName || '',
-        tenantId: decodedToken.tenantId,
-        role: decodedToken.role,
-      }
-      localStorage.setItem('user', JSON.stringify(user))
-      
-      toast.success("Account created! Let's get started.")
-
-      // Establish NextAuth session cookie so Server Actions work
-      await signIn("credentials", {
-        email: data.email,
-        password: data.password,
-        redirect: false,
-      });
-
-      router.push("/dashboard")
+    } else if (result.success && result.requiresVerification) {
+      setSubmitted({ email: result.email })
+      toast.success("Account created! Check your email to verify it.")
     } else {
-      toast.error("Registration succeeded but no tokens received")
+      toast.error("Registration succeeded but the response was unexpected.")
+    }
+  }
+
+  async function onResend() {
+    if (!submitted) return
+    setResending(true)
+    const result = await resendVerificationEmail(submitted.email)
+    setResending(false)
+    if (result.error) {
+      toast.error(result.error)
+    } else {
+      toast.success("Verification email sent again. Check your inbox.")
     }
   }
 
@@ -110,6 +99,38 @@ export default function RegisterPage() {
 
         {/* Right Side: Form */}
         <div className="bg-white rounded-[2rem] p-8 shadow-ambient border border-[rgba(190,200,202,0.2)] animate-fade-in-3d delay-100">
+          {submitted ? (
+            <div className="text-center py-6 space-y-6">
+              <div className="w-16 h-16 rounded-full bg-[#cae8eb]/50 flex items-center justify-center mx-auto">
+                <MailCheck size={28} className="text-[#005259]" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-extrabold text-[#1d1b18]">Check your email</h2>
+                <p className="text-sm text-[#6f797a] font-medium leading-relaxed">
+                  We sent a verification link to <span className="font-bold text-[#1d1b18]">{submitted.email}</span>.
+                  Click it to activate your account before logging in.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  disabled={resending}
+                  onClick={onResend}
+                  className="w-full h-12 border border-[#005259]/20 text-[#005259] font-bold rounded-xl hover:bg-[#f9f3ed] transition-all disabled:opacity-50"
+                >
+                  {resending ? "Sending..." : "Resend verification email"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push("/login")}
+                  className="w-full h-12 bg-[#005259] hover:bg-[#0f6c74] text-white font-bold rounded-xl transition-all"
+                >
+                  Back to login
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
           <div className="md:hidden text-center mb-8">
             <h2 className="text-2xl font-extrabold text-[#1d1b18]">Create account</h2>
           </div>
@@ -180,6 +201,8 @@ export default function RegisterPage() {
               Log in
             </Link>
           </p>
+            </>
+          )}
         </div>
       </div>
     </div>

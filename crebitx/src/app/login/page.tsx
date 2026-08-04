@@ -12,6 +12,7 @@ import { toast } from "sonner"
 import { ArrowRight, Eye, EyeOff } from "lucide-react"
 import authService from "@/lib/auth-service"
 import { signIn } from "next-auth/react"
+import { resendVerificationEmail } from "@/app/actions/auth"
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -21,6 +22,8 @@ const loginSchema = z.object({
 export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
+  const [resending, setResending] = useState(false)
   const router = useRouter()
 
   const { register, handleSubmit, formState: { errors } } = useForm<z.infer<typeof loginSchema>>({
@@ -33,16 +36,17 @@ export default function LoginPage() {
 
   async function onSubmit(data: z.infer<typeof loginSchema>) {
     setLoading(true)
-    
+    setUnverifiedEmail(null)
+
     try {
       const result = await authService.login({
         email: data.email,
         password: data.password,
       })
-      
+
       if (result.tokens.accessToken) {
         toast.success(`Welcome back, ${result.user.firstName || result.user.email}!`)
-        
+
         // Establish NextAuth session cookie so Server Actions work
         await signIn("credentials", {
           email: data.email,
@@ -56,10 +60,30 @@ export default function LoginPage() {
         }, 500);
       }
     } catch (error: any) {
-      console.error('âŒ Login error:', error);
+      console.error('Login error:', error);
+
+      if (error.code === "EMAIL_NOT_VERIFIED") {
+        setUnverifiedEmail(data.email)
+        toast.error("Please verify your email before logging in.")
+        setLoading(false)
+        return
+      }
+
       const errorMessage = error.response?.data?.message || error.message || "Invalid email or password";
       toast.error(errorMessage)
       setLoading(false)
+    }
+  }
+
+  async function onResend() {
+    if (!unverifiedEmail) return
+    setResending(true)
+    const result = await resendVerificationEmail(unverifiedEmail)
+    setResending(false)
+    if (result.error) {
+      toast.error(result.error)
+    } else {
+      toast.success("Verification email sent. Check your inbox.")
     }
   }
 
@@ -98,7 +122,12 @@ export default function LoginPage() {
 
             {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-[10px] font-bold uppercase tracking-widest text-[#3f494a]">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-[10px] font-bold uppercase tracking-widest text-[#3f494a]">Password</Label>
+                <Link href="/forgot-password" className="text-[10px] font-bold text-[#005259] hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <Input
                   id="password"
@@ -133,6 +162,22 @@ export default function LoginPage() {
                 <>Log In <ArrowRight size={18} /></>
               )}
             </button>
+
+            {unverifiedEmail && (
+              <div className="rounded-xl bg-[#fff8e1] border border-[#f4c430]/30 p-4 text-center space-y-2">
+                <p className="text-xs font-bold text-[#703d15]">
+                  Your email isn&apos;t verified yet. Check your inbox for the confirmation link.
+                </p>
+                <button
+                  type="button"
+                  disabled={resending}
+                  onClick={onResend}
+                  className="text-xs font-bold text-[#005259] hover:underline disabled:opacity-50"
+                >
+                  {resending ? "Sending..." : "Resend verification email"}
+                </button>
+              </div>
+            )}
           </form>
         </div>
 

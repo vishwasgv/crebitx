@@ -1,11 +1,12 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { DatabaseService } from '@/database/database.service';
 import { LoggerService } from '@/common/services/logger.service';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
-import { AuthTokens, JwtPayload } from './interfaces/auth.interface';
+import { AuthTokens, JwtPayload, RegisterResult } from './interfaces/auth.interface';
+import { EmailVerificationService } from './email-verification.service';
 
 @Injectable()
 export class AuthService {
@@ -14,9 +15,10 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private logger: LoggerService,
+    private emailVerificationService: EmailVerificationService,
   ) {}
 
-  async register(registerDto: RegisterDto): Promise<AuthTokens> {
+  async register(registerDto: RegisterDto): Promise<RegisterResult> {
     const { email, password, firstName, lastName, phone, tenantName, tenantSlug } = registerDto;
 
     // Check if user exists
@@ -81,13 +83,14 @@ export class AuthService {
 
     this.logger.log(`User registered: ${email}`, 'AuthService');
 
-    // Generate tokens
-    return this.generateTokens({
-      sub: result.user.id,
-      email: result.user.email,
-      tenantId: result.tenant.id,
-      role: result.role,
-    });
+    // Send verification email; login is blocked until the link is confirmed.
+    await this.emailVerificationService.sendVerificationEmail(
+      result.user.id,
+      result.user.email,
+      result.user.first_name,
+    );
+
+    return { success: true, requiresVerification: true, email: result.user.email };
   }
 
   async login(loginDto: LoginDto): Promise<AuthTokens> {
@@ -95,8 +98,8 @@ export class AuthService {
 
     // Get user with tenant and role info
     const user = await this.databaseService.queryOne(
-      `SELECT 
-        u.id, u.email, u.password_hash, u.status,
+      `SELECT
+        u.id, u.email, u.password_hash, u.status, u.is_email_verified,
         tu.tenant_id, r.name as role
        FROM users u
        INNER JOIN tenant_users tu ON u.id = tu.user_id
@@ -118,6 +121,13 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!user.is_email_verified) {
+      throw new ForbiddenException({
+        code: 'EMAIL_NOT_VERIFIED',
+        message: 'Please verify your email before logging in.',
+      });
     }
 
     // Update last login

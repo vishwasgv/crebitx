@@ -12,7 +12,7 @@ export class CustomersService {
   constructor(
     private readonly db: DatabaseService,
     private readonly riskEngine: RiskEngineService,
-  ) { }
+  ) {}
 
   /**
    * Create a new customer with credit profile
@@ -450,19 +450,19 @@ export class CustomersService {
         dueDate.setDate(dueDate.getDate() + paymentCycle);
 
         const receivableResult = await client.query(
-  `INSERT INTO receivable_items (customer_id, amount, description, due_date)
+          `INSERT INTO receivable_items (customer_id, amount, description, due_date)
    VALUES ($1, $2, $3, $4)
    RETURNING id, due_date`,
-  [dto.customerId, dto.amount, dto.note, dueDate.toISOString().split('T')[0]],
-);
+          [dto.customerId, dto.amount, dto.note, dueDate.toISOString().split('T')[0]],
+        );
 
-await this.scheduleReceivableReminders(
-  client,
-  dto.customerId,
-  receivableResult.rows[0].id,
-  new Date(receivableResult.rows[0].due_date),
-  dto.amount,
-);
+        await this.scheduleReceivableReminders(
+          client,
+          dto.customerId,
+          receivableResult.rows[0].id,
+          new Date(receivableResult.rows[0].due_date),
+          dto.amount,
+        );
       }
 
       // Handle PAYMENT: Allocate to oldest receivables (FIFO)
@@ -595,7 +595,14 @@ await this.scheduleReceivableReminders(
       `INSERT INTO customer_activities (tenant_id, customer_id, type, description, promise_date, promise_amount)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id, type, description, promise_date as "promiseDate", promise_amount as "promiseAmount", created_at as "createdAt"`,
-      [tenantId, customerId, dto.type, dto.description, dto.promiseDate || null, dto.promiseAmount || null]
+      [
+        tenantId,
+        customerId,
+        dto.type,
+        dto.description,
+        dto.promiseDate || null,
+        dto.promiseAmount || null,
+      ],
     );
     return { success: true, data: result.rows[0] };
   }
@@ -686,7 +693,13 @@ await this.scheduleReceivableReminders(
   }
 
   async markPaymentPromiseBroken(tenantId: string, promiseId: string, dto: MarkPaymentPromiseDto) {
-    const promise = await this.updatePaymentPromiseStatus(tenantId, promiseId, 'BROKEN', dto.note, false);
+    const promise = await this.updatePaymentPromiseStatus(
+      tenantId,
+      promiseId,
+      'BROKEN',
+      dto.note,
+      false,
+    );
 
     this.riskEngine.calculateRiskScore(promise.customerId).catch((err) => {
       this.logger.warn(`Risk recalculation failed after broken promise ${promiseId}`, err);
@@ -753,7 +766,7 @@ await this.scheduleReceivableReminders(
     } finally {
       client.release();
     }
-    }
+  }
 
   async getMLIntelligence(tenantId: string, customerId: string) {
     const customerCheck = await this.db.query(
@@ -771,12 +784,16 @@ await this.scheduleReceivableReminders(
       // Persist as the customer's canonical risk snapshot so list/dashboard
       // views pick up the same fresh score shown here, without blocking the response.
       this.riskEngine.persistMlSnapshot(customerId, data).catch((err) => {
-        this.logger.warn(`Failed to persist ML snapshot for customer ${customerId}: ${err.message}`);
+        this.logger.warn(
+          `Failed to persist ML snapshot for customer ${customerId}: ${err.message}`,
+        );
       });
 
       return { success: true, data };
     } catch (error) {
-      this.logger.warn(`Failed to fetch ML intelligence for customer ${customerId}: ${error.message}`);
+      this.logger.warn(
+        `Failed to fetch ML intelligence for customer ${customerId}: ${error.message}`,
+      );
       return { success: false, error: 'ML Engine unavailable or model not trained' };
     }
   }
@@ -798,6 +815,193 @@ await this.scheduleReceivableReminders(
 
     const result = await this.riskEngine.calculateRiskScore(customerId);
     return { success: true, data: result };
+  }
+
+  /**
+   * Heuristic breakdown of how this customer's outstanding balance is likely
+   * to be recovered: without any intervention (self-service), via a
+   * negotiated arrangement (promise-to-pay), or only via escalation (hold
+   * credit / call). Starts from a healthy-customer baseline and shifts
+   * weight toward negotiated/escalated as risk and broken-promise history
+   * grow, then normalizes back to 100.
+   */
+  async getPaymentProbability(tenantId: string, customerId: string) {
+    const customerCheck = await this.db.query(
+      'SELECT id FROM customers WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+      [customerId, tenantId],
+    );
+    if (customerCheck.rows.length === 0) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    const [riskResult, promiseResult, overdueResult] = await Promise.all([
+      this.db.query(
+        `SELECT level FROM risk_score_snapshots WHERE customer_id = $1 ORDER BY snapshot_date DESC LIMIT 1`,
+        [customerId],
+      ),
+      this.db.query(
+        `SELECT
+           COUNT(*) FILTER (WHERE status = 'KEPT') AS kept,
+           COUNT(*) FILTER (WHERE status = 'BROKEN') AS broken
+         FROM payment_promises
+         WHERE customer_id = $1`,
+        [customerId],
+      ),
+      this.db.query(
+        `SELECT COALESCE(MAX(EXTRACT(DAY FROM (NOW() - due_date))), 0) AS max_days_overdue
+         FROM receivable_items
+         WHERE customer_id = $1 AND is_paid = FALSE`,
+        [customerId],
+      ),
+    ]);
+
+    const riskLevel = riskResult.rows[0]?.level || 'GREEN';
+    const kept = parseInt(promiseResult.rows[0]?.kept || '0', 10);
+    const broken = parseInt(promiseResult.rows[0]?.broken || '0', 10);
+    const daysOverdue = Math.max(
+      0,
+      Math.floor(parseFloat(overdueResult.rows[0]?.max_days_overdue || 0)),
+    );
+
+    let selfService = 70;
+    let negotiated = 20;
+    let escalated = 10;
+
+    if (riskLevel === 'YELLOW') {
+      selfService -= 20;
+      negotiated += 15;
+      escalated += 5;
+    } else if (riskLevel === 'RED') {
+      selfService -= 45;
+      negotiated += 15;
+      escalated += 30;
+    }
+
+    if (daysOverdue > 7) {
+      selfService -= 10;
+      negotiated += 5;
+      escalated += 5;
+    }
+
+    negotiated += kept * 5;
+    escalated += broken * 10;
+    selfService -= broken * 5;
+
+    selfService = Math.max(5, selfService);
+    negotiated = Math.max(5, negotiated);
+    escalated = Math.max(5, escalated);
+
+    const total = selfService + negotiated + escalated;
+    return {
+      customerId,
+      selfServicePct: Math.round((selfService / total) * 100),
+      negotiatedPct: Math.round((negotiated / total) * 100),
+      escalatedPct: Math.round((escalated / total) * 100),
+    };
+  }
+
+  /**
+   * Merged chronological history of everything that happened between the
+   * business and this customer: reminders sent, activities/notes logged,
+   * promise-to-pay lifecycle events, and recorded outreach outcomes.
+   */
+  async getEngagementTimeline(tenantId: string, customerId: string, limit = 20) {
+    const customerCheck = await this.db.query(
+      'SELECT id FROM customers WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+      [customerId, tenantId],
+    );
+    if (customerCheck.rows.length === 0) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    const [reminders, activities, promiseEvents, outcomes] = await Promise.all([
+      this.db.query(
+        `SELECT id, message, sent_at FROM reminder_jobs
+         WHERE customer_id = $1 AND status = 'SENT' AND sent_at IS NOT NULL
+         ORDER BY sent_at DESC LIMIT $2`,
+        [customerId, limit],
+      ),
+      this.db.query(
+        `SELECT id, type, description, created_at FROM customer_activities
+         WHERE customer_id = $1 ORDER BY created_at DESC LIMIT $2`,
+        [customerId, limit],
+      ),
+      this.db.query(
+        `SELECT pe.id, pe.type, pe.note, pe.created_at, pp.amount, pp.promised_date
+         FROM payment_promise_events pe
+         INNER JOIN payment_promises pp ON pp.id = pe.payment_promise_id
+         WHERE pp.customer_id = $1
+         ORDER BY pe.created_at DESC LIMIT $2`,
+        [customerId, limit],
+      ),
+      this.db.query(
+        `SELECT id, channel, tone, outcome_status, note, created_at FROM collection_outcomes
+         WHERE customer_id = $1 ORDER BY created_at DESC LIMIT $2`,
+        [customerId, limit],
+      ),
+    ]);
+
+    const events: any[] = [];
+
+    for (const r of reminders.rows) {
+      events.push({
+        id: `reminder-${r.id}`,
+        type: 'REMINDER_SENT',
+        title: 'Reminder Sent',
+        detail: r.message || 'Automated reminder sent to customer.',
+        severity: 'INFO',
+        date: r.sent_at,
+      });
+    }
+
+    for (const a of activities.rows) {
+      const isPromise = a.type === 'PROMISE_TO_PAY';
+      events.push({
+        id: `activity-${a.id}`,
+        type: a.type,
+        title: isPromise
+          ? 'Promise to Pay Logged'
+          : a.type.charAt(0) + a.type.slice(1).toLowerCase(),
+        detail: a.description,
+        severity: 'INFO',
+        date: a.created_at,
+      });
+    }
+
+    for (const pe of promiseEvents.rows) {
+      const amount = parseFloat(pe.amount || 0);
+      const titleByType: Record<string, string> = {
+        CREATED: 'Promise Made',
+        KEPT: 'Promise Kept',
+        BROKEN: 'Promise Broken',
+      };
+      events.push({
+        id: `promise-event-${pe.id}`,
+        type: `PROMISE_${pe.type}`,
+        title: titleByType[pe.type] || 'Promise Update',
+        detail:
+          pe.note ||
+          `Amount Rs. ${amount.toLocaleString()}${pe.promised_date ? `, due ${new Date(pe.promised_date).toLocaleDateString('en-IN')}` : ''}`,
+        severity: pe.type === 'BROKEN' ? 'CRITICAL' : pe.type === 'KEPT' ? 'POSITIVE' : 'INFO',
+        date: pe.created_at,
+      });
+    }
+
+    for (const o of outcomes.rows) {
+      events.push({
+        id: `outcome-${o.id}`,
+        type: 'OUTCOME',
+        title: `${o.channel || 'Outreach'} - ${o.outcome_status}`,
+        detail: o.note || `${o.tone || 'Standard'} tone via ${o.channel || 'unknown channel'}.`,
+        severity: 'INFO',
+        date: o.created_at,
+      });
+    }
+
+    return events
+      .filter((event) => !!event.date)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, limit);
   }
 
   private async scheduleReceivableReminders(
@@ -830,5 +1034,3 @@ await this.scheduleReceivableReminders(
     }
   }
 }
-
-

@@ -4,11 +4,11 @@ import { getDashboardKPIs } from "@/app/actions/dashboard"
 import { TopNav } from "@/components/navigation/top-nav"
 import { Scroll3D, TiltCard } from "@/components/ui/scroll-3d"
 import { CollectionChart } from "@/components/dashboard/collection-chart"
-import { 
-  PlusCircle, 
-  ArrowRight, 
-  TrendingUp, 
-  AlertTriangle, 
+import {
+  PlusCircle,
+  ArrowRight,
+  TrendingUp,
+  AlertTriangle,
   Sparkles,
   Zap
 } from "lucide-react"
